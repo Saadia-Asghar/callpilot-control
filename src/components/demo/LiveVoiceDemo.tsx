@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConversation } from "@elevenlabs/react";
 import { useToast } from "@/hooks/use-toast";
+import { SUPABASE_URL, SUPABASE_KEY } from "@/lib/supabaseHelpers";
 
 interface LiveVoiceDemoProps {
   /** Optional label override */
@@ -49,13 +50,13 @@ export function LiveVoiceDemo({ title = "Talk to CallPilot Live" }: LiveVoiceDem
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-conversation-token`,
+        `${SUPABASE_URL}/functions/v1/elevenlabs-conversation-token`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
           },
         }
       );

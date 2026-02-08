@@ -1,15 +1,18 @@
 /**
  * Shared TTS helper using the ElevenLabs edge function.
  */
+
+import { SUPABASE_URL, SUPABASE_KEY } from "./supabaseHelpers";
+
 export async function generateTTS(text: string, voiceId: string): Promise<Blob> {
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+    `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
       },
       body: JSON.stringify({ text, voiceId }),
     }
