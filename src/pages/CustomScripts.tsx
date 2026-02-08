@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useVoiceProfiles, type VoiceProfile } from "@/hooks/useVoiceProfiles";
 import { VoiceSelector } from "@/components/voice/VoiceSelector";
-import api from "@/lib/api";
 import { generateTTS } from "@/lib/tts";
 
 interface Script {
@@ -51,35 +50,13 @@ export default function CustomScripts() {
   const { voices, isLoading: voicesLoading } = useVoiceProfiles();
 
   useEffect(() => {
-    const fetchScripts = async () => {
-      try {
-        const data: any = await api.loadCustomScript();
-        if (data?.scripts) {
-          setScripts(data.scripts.map((s: any) => ({
-            id: String(s.script_id),
-            name: s.name,
-            operator: 'Current',
-            type: 'custom' as const,
-            content: JSON.stringify(s.script_flow || {}),
-            lastEdited: 'Recently'
-          })));
-        } else if (data?.script_flow) {
-          setScripts([{
-            id: String(data.script_id),
-            name: data.name,
-            operator: 'Current',
-            type: 'custom' as const,
-            content: JSON.stringify(data.script_flow),
-            lastEdited: 'Recently'
-          }]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch scripts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchScripts();
+    // Use mock scripts data
+    setScripts([
+      { id: "1", name: "Welcome Script", operator: "Default", type: "greeting" as const, content: "Welcome the caller warmly and ask how you can help today.", lastEdited: "Today" },
+      { id: "2", name: "Appointment Booking", operator: "Default", type: "intake" as const, content: "Ask for preferred date and time, check availability, confirm booking.", lastEdited: "Yesterday" },
+      { id: "3", name: "Follow-up Script", operator: "Default", type: "custom" as const, content: "Reference previous call, confirm satisfaction, offer next steps.", lastEdited: "2 days ago" },
+    ]);
+    setLoading(false);
   }, []);
 
   const filtered = scripts.filter((s) =>

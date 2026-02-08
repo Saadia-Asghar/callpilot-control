@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import api from "@/lib/api";
 import { generateTTS } from "@/lib/tts";
 
 const VOICES = [

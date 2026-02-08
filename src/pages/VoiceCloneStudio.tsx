@@ -13,8 +13,8 @@ import { GlassPanel, GlassPanelHeader, GlassPanelContent } from "@/components/ag
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceProfiles } from "@/hooks/useVoiceProfiles";
 import { SaveVoiceDialog } from "@/components/voice/SaveVoiceDialog";
-import api from "@/lib/api";
 import { generateTTS } from "@/lib/tts";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VoiceProfile {
   id: string;
@@ -170,17 +170,16 @@ export default function VoiceCloneStudio() {
 
   const handleSaveVoice = async (name: string, settings: { warmth: number; speed: number; energy: number; elevenlabs_voice_id: string }) => {
     try {
-      // Use backend API to save voice
-      await api.saveVoice({
-        voice_id: settings.elevenlabs_voice_id,
-        voice_name: name,
-        tone: settings.warmth,
+      const { error } = await supabase.from("voice_profiles").insert({
+        name,
+        elevenlabs_voice_id: settings.elevenlabs_voice_id,
+        warmth: settings.warmth,
         speed: settings.speed,
         energy: settings.energy,
-        stability: 0.5, // Default values - could be made configurable
-        similarity_boost: 0.75,
-        style: sliders.expressiveness / 100.0, // Map expressiveness to style
+        expressiveness: sliders.expressiveness,
+        professionalism: sliders.professionalism,
       });
+      if (error) throw error;
       toast({ title: "Voice saved!", description: `"${name}" has been saved successfully.` });
     } catch (error: any) {
       console.error("Failed to save voice:", error);

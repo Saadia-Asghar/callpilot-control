@@ -96,7 +96,7 @@ export default function CalendarView() {
                         {event.status !== "available" && (
                           <button
                             className="rounded p-1 hover:bg-background/50"
-                            onClick={() => rescheduleMutation.mutate({ id: event.id, status: event.status === "confirmed" ? "pending" : "confirmed" })}
+                            onClick={() => rescheduleMutation.mutate({ id: String(event.id), status: event.status === "confirmed" ? "pending" : "confirmed" })}
                           >
                             {rescheduleMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                           </button>

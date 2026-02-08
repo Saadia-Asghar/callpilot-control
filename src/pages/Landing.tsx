@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { DemoVoiceClone } from "@/components/demo/DemoVoiceClone";
 import { DemoScheduler } from "@/components/demo/DemoScheduler";
 import { DemoDraftEditor } from "@/components/demo/DemoDraftEditor";
-import api from "@/lib/api";
+
 
 const DEMO_LIMIT = 3;
 
@@ -75,27 +75,22 @@ export default function Landing() {
     sessionStorage.setItem('demo_session_id', newId);
     return newId;
   });
-  const [demoUsage, setDemoUsage] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const getDemoUsage = () => {
+    const stored = sessionStorage.getItem(`demo_usage_${sessionId}`);
+    return stored ? JSON.parse(stored) : { voice_clone: 0, schedule_demo: 0, call_draft: 0 };
+  };
+  const [demoUsage, setDemoUsage] = useState(getDemoUsage);
 
-  // Fetch demo usage on mount
-  useEffect(() => {
-    const fetchDemoUsage = async () => {
-      try {
-        const usage = await api.getDemoUsage(sessionId);
-        setDemoUsage(usage);
-      } catch (error) {
-        console.error('Failed to fetch demo usage:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDemoUsage();
-  }, [sessionId]);
+  const incrementUsage = (feature: string) => {
+    const usage = getDemoUsage();
+    usage[feature] = (usage[feature] ?? 0) + 1;
+    sessionStorage.setItem(`demo_usage_${sessionId}`, JSON.stringify(usage));
+    setDemoUsage({ ...usage });
+  };
 
-  const voiceRemaining = demoUsage?.features?.voice_clone?.tries_remaining ?? DEMO_LIMIT;
-  const scheduleRemaining = demoUsage?.features?.schedule_demo?.tries_remaining ?? DEMO_LIMIT;
-  const draftRemaining = demoUsage?.features?.call_draft?.tries_remaining ?? DEMO_LIMIT;
+  const voiceRemaining = DEMO_LIMIT - (demoUsage.voice_clone ?? 0);
+  const scheduleRemaining = DEMO_LIMIT - (demoUsage.schedule_demo ?? 0);
+  const draftRemaining = DEMO_LIMIT - (demoUsage.call_draft ?? 0);
   const totalRemaining = voiceRemaining + scheduleRemaining + draftRemaining;
 
   return (
@@ -209,45 +204,21 @@ export default function Landing() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
               <TabsContent value="voice" className="mt-0">
                 <DemoVoiceClone 
-                  onDemoUsed={async () => {
-                    try {
-                      await api.incrementDemoUsage('voice_clone', sessionId);
-                      const usage = await api.getDemoUsage(sessionId);
-                      setDemoUsage(usage);
-                    } catch (error) {
-                      console.error('Failed to update demo usage:', error);
-                    }
-                  }} 
+                  onDemoUsed={() => incrementUsage('voice_clone')} 
                   remaining={voiceRemaining}
                   sessionId={sessionId}
                 />
               </TabsContent>
               <TabsContent value="schedule" className="mt-0">
                 <DemoScheduler 
-                  onDemoUsed={async () => {
-                    try {
-                      await api.incrementDemoUsage('schedule_demo', sessionId);
-                      const usage = await api.getDemoUsage(sessionId);
-                      setDemoUsage(usage);
-                    } catch (error) {
-                      console.error('Failed to update demo usage:', error);
-                    }
-                  }} 
+                  onDemoUsed={() => incrementUsage('schedule_demo')} 
                   remaining={scheduleRemaining}
                   sessionId={sessionId}
                 />
               </TabsContent>
               <TabsContent value="draft" className="mt-0">
                 <DemoDraftEditor 
-                  onDemoUsed={async () => {
-                    try {
-                      await api.incrementDemoUsage('call_draft', sessionId);
-                      const usage = await api.getDemoUsage(sessionId);
-                      setDemoUsage(usage);
-                    } catch (error) {
-                      console.error('Failed to update demo usage:', error);
-                    }
-                  }} 
+                  onDemoUsed={() => incrementUsage('call_draft')} 
                   remaining={draftRemaining}
                   sessionId={sessionId}
                 />
