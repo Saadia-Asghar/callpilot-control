@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { X, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { callLogs } from "@/data/mockData";
+import { Skeleton } from "@/components/ui/skeleton";
+import { fetchCallLogs } from "@/lib/dataService";
 
-const statusBadge = {
+const statusBadge: Record<string, string> = {
   success: "bg-success/15 text-success border-success/30",
   warning: "bg-warning/15 text-warning border-warning/30",
   error: "bg-destructive/15 text-destructive border-destructive/30",
@@ -12,8 +14,30 @@ const statusBadge = {
 };
 
 export default function CallLogs() {
-  const [selected, setSelected] = useState<number | null>(null);
-  const selectedLog = callLogs.find((l) => l.id === selected);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const { data: logs, isLoading } = useQuery({
+    queryKey: ["call_logs"],
+    queryFn: fetchCallLogs,
+  });
+
+  const filteredLogs = (logs || []).filter((l: any) =>
+    l.caller_name.toLowerCase().includes(search.toLowerCase()) ||
+    l.intent.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selectedLog = filteredLogs.find((l: any) => l.id === selected);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-slide-in">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -26,51 +50,53 @@ export default function CallLogs() {
         <div className={`flex-1 min-w-0 space-y-4 ${selected ? "hidden lg:block" : ""}`}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search calls..." className="pl-9" />
+            <Input placeholder="Search calls..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
 
-          <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="p-3 font-medium text-muted-foreground">Caller</th>
-                  <th className="p-3 font-medium text-muted-foreground hidden sm:table-cell">Intent</th>
-                  <th className="p-3 font-medium text-muted-foreground">Outcome</th>
-                  <th className="p-3 font-medium text-muted-foreground hidden md:table-cell">Duration</th>
-                  <th className="p-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {callLogs.map((log) => (
-                  <tr
-                    key={log.id}
-                    onClick={() => setSelected(log.id)}
-                    className={`cursor-pointer transition-colors hover:bg-muted/50 ${selected === log.id ? "bg-accent/50" : ""}`}
-                  >
-                    <td className="p-3">
-                      <p className="font-medium text-card-foreground">{log.callerName}</p>
-                      <p className="text-xs text-muted-foreground">{log.date}</p>
-                    </td>
-                    <td className="p-3 hidden sm:table-cell text-muted-foreground">{log.intent}</td>
-                    <td className="p-3 text-card-foreground">{log.outcome}</td>
-                    <td className="p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{log.duration}</td>
-                    <td className="p-3">
-                      <Badge variant="outline" className={`text-[11px] ${statusBadge[log.status]}`}>
-                        {log.status}
-                      </Badge>
-                    </td>
+          {filteredLogs.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card p-12 shadow-card text-center">
+              <p className="text-sm text-muted-foreground">No call logs found.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="p-3 font-medium text-muted-foreground">Caller</th>
+                    <th className="p-3 font-medium text-muted-foreground hidden sm:table-cell">Intent</th>
+                    <th className="p-3 font-medium text-muted-foreground">Outcome</th>
+                    <th className="p-3 font-medium text-muted-foreground hidden md:table-cell">Duration</th>
+                    <th className="p-3 font-medium text-muted-foreground">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredLogs.map((log: any) => (
+                    <tr key={log.id} onClick={() => setSelected(log.id)}
+                      className={`cursor-pointer transition-colors hover:bg-muted/50 ${selected === log.id ? "bg-accent/50" : ""}`}>
+                      <td className="p-3">
+                        <p className="font-medium text-card-foreground">{log.caller_name}</p>
+                        <p className="text-xs text-muted-foreground">{log.date}</p>
+                      </td>
+                      <td className="p-3 hidden sm:table-cell text-muted-foreground">{log.intent}</td>
+                      <td className="p-3 text-card-foreground">{log.outcome}</td>
+                      <td className="p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{log.duration}</td>
+                      <td className="p-3">
+                        <Badge variant="outline" className={`text-[11px] ${statusBadge[log.status] || statusBadge.neutral}`}>
+                          {log.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {/* Detail Panel */}
         {selectedLog && (
           <div className="w-full lg:w-96 shrink-0 rounded-xl border border-border bg-card shadow-card">
             <div className="flex items-center justify-between border-b border-border p-4">
-              <h3 className="text-sm font-semibold text-card-foreground">{selectedLog.callerName}</h3>
+              <h3 className="text-sm font-semibold text-card-foreground">{selectedLog.caller_name}</h3>
               <button onClick={() => setSelected(null)} className="rounded-md p-1 hover:bg-muted">
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
