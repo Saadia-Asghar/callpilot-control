@@ -11,22 +11,22 @@ print("CallPilot Configuration Check".center(60))
 print("=" * 60)
 
 # Check environment variables
-print("\n📋 Environment Variables:")
+print("\n[Environment Variables]")
 print(f"  LLM Provider: {os.getenv('LLM_PROVIDER', 'NOT SET')}")
-print(f"  OpenAI Key: {'✓ SET' if os.getenv('OPENAI_API_KEY') and 'your_' not in os.getenv('OPENAI_API_KEY', '') else '✗ NOT SET'}")
-print(f"  Gemini Key: {'✓ SET' if os.getenv('GEMINI_API_KEY') and 'your_' not in os.getenv('GEMINI_API_KEY', '') else '✗ NOT SET'}")
-print(f"  ElevenLabs Key: {'✓ SET' if os.getenv('ELEVENLABS_API_KEY') and 'your_' not in os.getenv('ELEVENLABS_API_KEY', '') else '✗ NOT SET (optional)'}")
+print(f"  OpenAI Key: {'[OK] SET' if os.getenv('OPENAI_API_KEY') and 'your_' not in os.getenv('OPENAI_API_KEY', '') else '[X] NOT SET'}")
+print(f"  Gemini Key: {'[OK] SET' if os.getenv('GEMINI_API_KEY') and 'your_' not in os.getenv('GEMINI_API_KEY', '') else '[X] NOT SET'}")
+print(f"  ElevenLabs Key: {'[OK] SET' if os.getenv('ELEVENLABS_API_KEY') and 'your_' not in os.getenv('ELEVENLABS_API_KEY', '') else '[X] NOT SET (optional)'}")
 
-print(f"\n🌐 Supabase Configuration:")
+print(f"\n[Supabase Configuration]")
 print(f"  URL: {os.getenv('VITE_SUPABASE_URL', 'NOT SET')}")
-print(f"  Key: {'✓ SET' if os.getenv('VITE_SUPABASE_PUBLISHABLE_KEY') else '✗ NOT SET'}")
+print(f"  Key: {'[OK] SET' if os.getenv('VITE_SUPABASE_PUBLISHABLE_KEY') else '[X] NOT SET'}")
 
-print(f"\n🔗 API Configuration:")
+print(f"\n[API Configuration]")
 print(f"  Backend URL: {os.getenv('VITE_API_URL', 'NOT SET')}")
 
-print(f"\n📁 Files:")
-print(f"  Database: {'✓ EXISTS' if os.path.exists('callpilot.db') else '✗ NOT FOUND'}")
-print(f"  node_modules: {'✓ EXISTS' if os.path.exists('node_modules') else '✗ NOT FOUND'}")
+print(f"\n[Files]")
+print(f"  Database: {'[OK] EXISTS' if os.path.exists('callpilot.db') else '[X] NOT FOUND'}")
+print(f"  node_modules: {'[OK] EXISTS' if os.path.exists('node_modules') else '[X] NOT FOUND'}")
 
 print("\n" + "=" * 60)
 
@@ -44,13 +44,13 @@ db_exists = os.path.exists('callpilot.db')
 node_exists = os.path.exists('node_modules')
 
 if llm_key_set and supabase_set and db_exists and node_exists:
-    print("✅ Status: READY TO LAUNCH!")
+    print("[OK] Status: READY TO LAUNCH!")
     print("\nNext steps:")
     print("  1. Terminal 1: python start.py")
     print("  2. Terminal 2: npm run dev")
     print("  3. Open: http://localhost:5173")
 else:
-    print("⚠️  Status: CONFIGURATION INCOMPLETE")
+    print("[!] Status: CONFIGURATION INCOMPLETE")
     print("\nRequired actions:")
     if not llm_key_set:
         print(f"  - Set {llm_provider.upper()}_API_KEY in .env file")
