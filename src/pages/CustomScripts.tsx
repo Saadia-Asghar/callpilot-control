@@ -97,53 +97,37 @@ export default function CustomScripts() {
     if (!selectedVoice?.elevenlabs_voice_id || !ttsText.trim()) return;
     setGenerating(true);
     try {
-      // Use backend API for TTS generation
-      const response = await api.previewVoice({
-        voice_id: selectedVoice.elevenlabs_voice_id,
-        sample_text: ttsText,
-        tone: selectedVoice.warmth || 50,
-        speed: selectedVoice.speed || 50,
-        energy: selectedVoice.energy || 50,
-      }) as any;
-      
-      // Backend returns preview_audio_base64
-      if (response.preview_audio_base64) {
-        // Convert base64 to blob
-        const byteCharacters = atob(response.preview_audio_base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            text: ttsText,
+            voiceId: selectedVoice.elevenlabs_voice_id,
+          }),
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-        
-        const url = URL.createObjectURL(blob);
-        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
-        setLastBlobUrl(url);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-      } else if (response.preview_url) {
-        // Fallback: fetch from URL if base64 not available
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        const audioResponse = await fetch(`${apiUrl}${response.preview_url}`);
-        if (!audioResponse.ok) throw new Error("Failed to fetch audio");
-        const audioBlob = await audioResponse.blob();
-        const url = URL.createObjectURL(audioBlob);
-        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
-        setLastBlobUrl(url);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-      } else {
-        throw new Error("No audio data received");
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `TTS request failed: ${response.status}`);
       }
+
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      setLastBlobUrl(url);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
     } catch (error: any) {
       console.error("TTS generation error:", error);
       toast({ 
