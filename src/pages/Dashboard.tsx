@@ -5,8 +5,34 @@ import { CallVolumeChart } from "@/components/dashboard/CallVolumeChart";
 import { SuccessRateDonut } from "@/components/dashboard/SuccessRateDonut";
 import { PeakHoursChart } from "@/components/dashboard/PeakHoursChart";
 import { dashboardStats } from "@/data/mockData";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+import { useEffect, useState } from "react";
 
 export default function Dashboard() {
+  const [insights, setInsights] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInsights = async () => {
+      try {
+        const data = await api.getOperatorInsights(30);
+        setInsights(data);
+      } catch (error) {
+        console.error('Failed to fetch insights:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInsights();
+  }, []);
+
+  // Use insights data if available, otherwise fallback to mock data
+  const stats = insights ? {
+    totalBookingsToday: insights.booking_metrics?.total_bookings_today || dashboardStats.totalBookingsToday,
+    callSuccessRate: insights.call_metrics?.success_rate || dashboardStats.callSuccessRate,
+  } : dashboardStats;
+
   return (
     <div className="space-y-6 animate-slide-in">
       <div>

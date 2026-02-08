@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
 
 const VOICES = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", tag: "Warm" },
@@ -22,8 +23,9 @@ const AUDIO_LIMIT_SEC = 15;
 type InputMode = "text" | "record";
 
 interface Props {
-  onDemoUsed: () => void;
+  onDemoUsed: () => void | Promise<void>;
   remaining: number;
+  sessionId?: string;
 }
 
 export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
@@ -135,39 +137,46 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: text.slice(0, TEXT_LIMIT), voiceId: selectedVoice.id }),
+      // Call backend API for voice preview
+      const previewData = await api.previewVoice({
+        voice_id: selectedVoice.id,
+        sample_text: text.slice(0, TEXT_LIMIT),
+        tone: warmth[0],
+        speed: speed[0],
+        energy: energy[0],
+      }, sessionId);
+
+      if (previewData.success && previewData.preview_audio_base64) {
+        // Convert base64 to blob
+        const audioBytes = Uint8Array.from(atob(previewData.preview_audio_base64), c => c.charCodeAt(0));
+        const blob = new Blob([audioBytes], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        
+        if (audioRef.current) {
+          audioRef.current.pause();
+          if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
         }
-      );
-      if (!response.ok) throw new Error("TTS failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        setLastBlobUrl(url);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+        await onDemoUsed();
+        toast({ 
+          title: "Voice Preview Generated", 
+          description: `${previewData.demo_tries_remaining || remaining - 1} demo tries remaining` 
+        });
+      } else {
+        throw new Error(previewData.error || "Voice preview failed");
       }
-      setLastBlobUrl(url);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onplay = () => setPlaying(true);
-      audio.onended = () => setPlaying(false);
-      audio.onpause = () => setPlaying(false);
-      await audio.play();
-      onDemoUsed();
     } catch {
       toast({ title: "Preview failed", description: "Could not generate voice preview.", variant: "destructive" });
     } finally {
       setGenerating(false);
     }
-  }, [text, selectedVoice, remaining, onDemoUsed, toast, lastBlobUrl, inputMode, recordedBlob]);
+  }, [text, selectedVoice, remaining, onDemoUsed, toast, lastBlobUrl, inputMode, recordedBlob, speed, warmth, energy, sessionId]);
 
   const stopPlayback = () => audioRef.current?.pause();
 

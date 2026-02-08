@@ -8,8 +8,9 @@ import { GlassPanel, GlassPanelHeader, GlassPanelContent } from "@/components/ag
 import { ReasoningTimeline } from "@/components/agent/ReasoningTimeline";
 import { liveTranscript as initialTranscript, toolCalls } from "@/data/mockData";
 import { reasoningStream, trustIndicators } from "@/data/agentIntelligenceData";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { WebSocketClient } from "@/lib/websocket";
 
 interface TranscriptLine {
   speaker: "agent" | "caller";
@@ -37,27 +38,33 @@ export default function LiveCall() {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Real-time subscription for live call events
-  useEffect(() => {
-    const channel = supabase
-      .channel("live-call-events")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "live_call_events", filter: "event_type=eq.transcript" },
-        (payload) => {
-          const e = payload.new as any;
-          setTranscript((prev) => [
-            ...prev,
-            { speaker: e.speaker === "agent" ? "agent" : "caller", text: e.content, timestamp: e.detail ?? "" },
-          ]);
-        }
-      )
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
-      });
+  const { user } = useAuth();
+  const wsRef = useRef<WebSocketClient | null>(null);
 
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  // Real-time subscription for live call events via WebSocket (optional; works with mock data if WS unavailable)
+  useEffect(() => {
+    const subscriptionId = user ? `operator-${user.id}` : `session-${Date.now()}`;
+    const ws = new WebSocketClient(subscriptionId, ['transcript', 'tool_calls', 'recovery_activity']);
+    wsRef.current = ws;
+
+    ws.on('transcript', (data: any) => {
+      const payload = data?.payload ?? data;
+      const speaker = (payload?.speaker === "agent" || payload?.role === "agent") ? "agent" : "caller";
+      const text = payload?.content ?? payload?.text ?? "";
+      const timestamp = payload?.timestamp ?? payload?.detail ?? "";
+      setTranscript((prev) => [...prev, { speaker, text, timestamp }]);
+    });
+
+    ws.connect()
+      .then(() => setConnected(true))
+      .catch(() => setConnected(false));
+
+    return () => {
+      ws.disconnect();
+      wsRef.current = null;
+      setConnected(false);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Code2, Plus, Play, Search, Trash2, Copy, Sparkles, Download, Loader2, Pause, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useVoiceProfiles, type VoiceProfile } from "@/hooks/useVoiceProfiles";
 import { VoiceSelector } from "@/components/voice/VoiceSelector";
+import api from "@/lib/api";
 
 interface Script {
   id: string;
@@ -35,16 +36,51 @@ const typeColors: Record<string, string> = {
 const TEXT_LIMIT = 500;
 
 export default function CustomScripts() {
-  const [scripts] = useState<Script[]>(mockScripts);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [ttsText, setTtsText] = useState("");
   const [selectedVoice, setSelectedVoice] = useState<VoiceProfile | null>(null);
+  const [selectedSavedVoiceId, setSelectedSavedVoiceId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [lastBlobUrl, setLastBlobUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
   const { voices, isLoading: voicesLoading } = useVoiceProfiles();
+
+  useEffect(() => {
+    const fetchScripts = async () => {
+      try {
+        const data = await api.loadCustomScript();
+        if (data.scripts) {
+          setScripts(data.scripts.map((s: any) => ({
+            id: s.script_id.toString(),
+            name: s.name,
+            operator: 'Current',
+            type: 'custom' as const,
+            content: JSON.stringify(s.script_flow || {}),
+            lastEdited: 'Recently'
+          })));
+        } else if (data.script_flow) {
+          // Single active script
+          setScripts([{
+            id: data.script_id.toString(),
+            name: data.name,
+            operator: 'Current',
+            type: 'custom' as const,
+            content: JSON.stringify(data.script_flow),
+            lastEdited: 'Recently'
+          }]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch scripts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchScripts();
+  }, []);
 
   const filtered = scripts.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) || s.operator.toLowerCase().includes(search.toLowerCase())
@@ -62,31 +98,60 @@ export default function CustomScripts() {
     if (!selectedVoice?.elevenlabs_voice_id || !ttsText.trim()) return;
     setGenerating(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: ttsText, voiceId: selectedVoice.elevenlabs_voice_id }),
+      // Use backend API for TTS generation
+      const response = await api.previewVoice({
+        voice_id: selectedVoice.elevenlabs_voice_id,
+        sample_text: ttsText,
+        tone: selectedVoice.warmth || 50,
+        speed: selectedVoice.speed || 50,
+        energy: selectedVoice.energy || 50,
+      }) as any;
+      
+      // Backend returns preview_audio_base64
+      if (response.preview_audio_base64) {
+        // Convert base64 to blob
+        const byteCharacters = atob(response.preview_audio_base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
-      );
-      if (!response.ok) throw new Error("TTS failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
-      setLastBlobUrl(url);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onplay = () => setPlaying(true);
-      audio.onended = () => setPlaying(false);
-      audio.onpause = () => setPlaying(false);
-      await audio.play();
-    } catch {
-      toast({ title: "TTS failed", description: "Could not generate speech.", variant: "destructive" });
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+        
+        const url = URL.createObjectURL(blob);
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        setLastBlobUrl(url);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+      } else if (response.preview_url) {
+        // Fallback: fetch from URL if base64 not available
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const audioResponse = await fetch(`${apiUrl}${response.preview_url}`);
+        if (!audioResponse.ok) throw new Error("Failed to fetch audio");
+        const audioBlob = await audioResponse.blob();
+        const url = URL.createObjectURL(audioBlob);
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        setLastBlobUrl(url);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+      } else {
+        throw new Error("No audio data received");
+      }
+    } catch (error: any) {
+      console.error("TTS generation error:", error);
+      toast({ 
+        title: "TTS failed", 
+        description: error.message || "Could not generate speech.", 
+        variant: "destructive" 
+      });
     } finally {
       setGenerating(false);
     }

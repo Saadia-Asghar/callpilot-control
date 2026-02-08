@@ -13,6 +13,7 @@ import { GlassPanel, GlassPanelHeader, GlassPanelContent } from "@/components/ag
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceProfiles } from "@/hooks/useVoiceProfiles";
 import { SaveVoiceDialog } from "@/components/voice/SaveVoiceDialog";
+import api from "@/lib/api";
 
 interface VoiceProfile {
   id: string;
@@ -167,17 +168,27 @@ export default function VoiceCloneStudio() {
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const handleSaveVoice = async (name: string, settings: { warmth: number; speed: number; energy: number; elevenlabs_voice_id: string }) => {
-    await saveVoice.mutateAsync({
-      name,
-      warmth: settings.warmth,
-      speed: settings.speed,
-      energy: settings.energy,
-      elevenlabs_voice_id: settings.elevenlabs_voice_id,
-      professionalism: sliders.professionalism,
-      expressiveness: sliders.expressiveness,
-      is_cloned: true,
-      quality_score: 85,
-    });
+    try {
+      // Use backend API to save voice
+      await api.saveVoice({
+        voice_id: settings.elevenlabs_voice_id,
+        voice_name: name,
+        tone: settings.warmth,
+        speed: settings.speed,
+        energy: settings.energy,
+        stability: 0.5, // Default values - could be made configurable
+        similarity_boost: 0.75,
+        style: sliders.expressiveness / 100.0, // Map expressiveness to style
+      });
+      toast({ title: "Voice saved!", description: `"${name}" has been saved successfully.` });
+    } catch (error: any) {
+      console.error("Failed to save voice:", error);
+      toast({ 
+        title: "Save failed", 
+        description: error.message || "Could not save voice.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   const filteredVoices = voices.filter((v) => {
@@ -201,67 +212,113 @@ export default function VoiceCloneStudio() {
     }
     setGeneratingTTS(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: sampleScript, voiceId: selectedVoice.elevenlabs_voice_id }),
+      // Use backend API for TTS generation
+      const response = await api.previewVoice({
+        voice_id: selectedVoice.elevenlabs_voice_id,
+        sample_text: sampleScript,
+        tone: sliders.warmth,
+        speed: sliders.speed,
+        energy: sliders.energy,
+      }) as any;
+      
+      // Backend returns preview_audio_base64
+      if (response.preview_audio_base64) {
+        // Convert base64 to blob
+        const byteCharacters = atob(response.preview_audio_base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
-      );
-      if (!response.ok) throw new Error("TTS failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      if (audioRef.current) { audioRef.current.pause(); URL.revokeObjectURL(audioRef.current.src); }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onplay = () => setPlaying(true);
-      audio.onended = () => setPlaying(false);
-      audio.onpause = () => setPlaying(false);
-      await audio.play();
-    } catch (err) {
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        if (audioRef.current) { audioRef.current.pause(); URL.revokeObjectURL(audioRef.current.src); }
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+      } else if (response.preview_url) {
+        // Fallback: fetch from URL
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const audioResponse = await fetch(`${apiUrl}${response.preview_url}`);
+        if (!audioResponse.ok) throw new Error("Failed to fetch audio");
+        const audioBlob = await audioResponse.blob();
+        const url = URL.createObjectURL(audioBlob);
+        if (audioRef.current) { audioRef.current.pause(); }
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+      } else {
+        throw new Error("No audio data received");
+      }
+    } catch (err: any) {
       console.error(err);
-      toast({ title: "Preview failed", description: "Could not generate voice preview.", variant: "destructive" });
+      toast({ title: "Preview failed", description: err.message || "Could not generate voice preview.", variant: "destructive" });
     } finally {
       setGeneratingTTS(false);
     }
-  }, [selectedVoice, sampleScript, toast]);
+  }, [selectedVoice, sampleScript, sliders, toast]);
 
   const handleTestCall = useCallback(async () => {
     if (!selectedVoice.elevenlabs_voice_id || !testText.trim()) return;
     setGeneratingTTS(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: testText, voiceId: selectedVoice.elevenlabs_voice_id }),
+      // Use backend API for TTS generation
+      const response = await api.previewVoice({
+        voice_id: selectedVoice.elevenlabs_voice_id,
+        sample_text: testText,
+        tone: sliders.warmth,
+        speed: sliders.speed,
+        energy: sliders.energy,
+      }) as any;
+      
+      // Backend returns preview_audio_base64
+      if (response.preview_audio_base64) {
+        // Convert base64 to blob
+        const byteCharacters = atob(response.preview_audio_base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
-      );
-      if (!response.ok) throw new Error("TTS failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      if (audioRef.current) { audioRef.current.pause(); }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onplay = () => setPlaying(true);
-      audio.onended = () => setPlaying(false);
-      await audio.play();
-    } catch {
-      toast({ title: "Test failed", variant: "destructive" });
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        if (audioRef.current) { audioRef.current.pause(); }
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+      } else if (response.preview_url) {
+        // Fallback: fetch from URL
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const audioResponse = await fetch(`${apiUrl}${response.preview_url}`);
+        if (!audioResponse.ok) throw new Error("Failed to fetch audio");
+        const audioBlob = await audioResponse.blob();
+        const url = URL.createObjectURL(audioBlob);
+        if (audioRef.current) { audioRef.current.pause(); }
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setPlaying(true);
+        audio.onended = () => setPlaying(false);
+        audio.onpause = () => setPlaying(false);
+        await audio.play();
+      } else {
+        throw new Error("No audio data received");
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Test failed", description: error.message || "Could not generate test audio.", variant: "destructive" });
     } finally {
       setGeneratingTTS(false);
     }
-  }, [selectedVoice, testText, toast]);
+  }, [selectedVoice, testText, sliders, toast]);
 
   const handleCloneStart = () => {
     if (!cloneName.trim()) { toast({ title: "Enter a name", variant: "destructive" }); return; }

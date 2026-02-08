@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
 
 const MOCK_SLOTS = [
   { time: "9:00 AM", day: "Tuesday", score: 96, reason: "Best match — low conflict, preferred morning" },
@@ -21,8 +22,9 @@ const AI_STEPS = [
 ];
 
 interface Props {
-  onDemoUsed: () => void;
+  onDemoUsed: () => void | Promise<void>;
   remaining: number;
+  sessionId?: string;
 }
 
 export function DemoScheduler({ onDemoUsed, remaining }: Props) {

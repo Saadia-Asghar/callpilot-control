@@ -11,9 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { DemoVoiceClone } from "@/components/demo/DemoVoiceClone";
 import { DemoScheduler } from "@/components/demo/DemoScheduler";
 import { DemoDraftEditor } from "@/components/demo/DemoDraftEditor";
+import api from "@/lib/api";
 
 const DEMO_LIMIT = 3;
 
@@ -66,13 +68,35 @@ const audiences = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [voiceUses, setVoiceUses] = useState(0);
-  const [scheduleUses, setScheduleUses] = useState(0);
-  const [draftUses, setDraftUses] = useState(0);
+  const [sessionId] = useState(() => {
+    // Generate or retrieve session ID
+    const stored = sessionStorage.getItem('demo_session_id');
+    if (stored) return stored;
+    const newId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('demo_session_id', newId);
+    return newId;
+  });
+  const [demoUsage, setDemoUsage] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const voiceRemaining = Math.max(0, DEMO_LIMIT - voiceUses);
-  const scheduleRemaining = Math.max(0, DEMO_LIMIT - scheduleUses);
-  const draftRemaining = Math.max(0, DEMO_LIMIT - draftUses);
+  // Fetch demo usage on mount
+  useEffect(() => {
+    const fetchDemoUsage = async () => {
+      try {
+        const usage = await api.getDemoUsage(sessionId);
+        setDemoUsage(usage);
+      } catch (error) {
+        console.error('Failed to fetch demo usage:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDemoUsage();
+  }, [sessionId]);
+
+  const voiceRemaining = demoUsage?.features?.voice_clone?.tries_remaining ?? DEMO_LIMIT;
+  const scheduleRemaining = demoUsage?.features?.schedule_demo?.tries_remaining ?? DEMO_LIMIT;
+  const draftRemaining = demoUsage?.features?.call_draft?.tries_remaining ?? DEMO_LIMIT;
   const totalRemaining = voiceRemaining + scheduleRemaining + draftRemaining;
 
   return (
@@ -185,13 +209,49 @@ export default function Landing() {
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
               <TabsContent value="voice" className="mt-0">
-                <DemoVoiceClone onDemoUsed={() => setVoiceUses(p => p + 1)} remaining={voiceRemaining} />
+                <DemoVoiceClone 
+                  onDemoUsed={async () => {
+                    try {
+                      await api.incrementDemoUsage('voice_clone', sessionId);
+                      const usage = await api.getDemoUsage(sessionId);
+                      setDemoUsage(usage);
+                    } catch (error) {
+                      console.error('Failed to update demo usage:', error);
+                    }
+                  }} 
+                  remaining={voiceRemaining}
+                  sessionId={sessionId}
+                />
               </TabsContent>
               <TabsContent value="schedule" className="mt-0">
-                <DemoScheduler onDemoUsed={() => setScheduleUses(p => p + 1)} remaining={scheduleRemaining} />
+                <DemoScheduler 
+                  onDemoUsed={async () => {
+                    try {
+                      await api.incrementDemoUsage('schedule_demo', sessionId);
+                      const usage = await api.getDemoUsage(sessionId);
+                      setDemoUsage(usage);
+                    } catch (error) {
+                      console.error('Failed to update demo usage:', error);
+                    }
+                  }} 
+                  remaining={scheduleRemaining}
+                  sessionId={sessionId}
+                />
               </TabsContent>
               <TabsContent value="draft" className="mt-0">
-                <DemoDraftEditor onDemoUsed={() => setDraftUses(p => p + 1)} remaining={draftRemaining} />
+                <DemoDraftEditor 
+                  onDemoUsed={async () => {
+                    try {
+                      await api.incrementDemoUsage('call_draft', sessionId);
+                      const usage = await api.getDemoUsage(sessionId);
+                      setDemoUsage(usage);
+                    } catch (error) {
+                      console.error('Failed to update demo usage:', error);
+                    }
+                  }} 
+                  remaining={draftRemaining}
+                  sessionId={sessionId}
+                />
               </TabsContent>
             </div>
           </Tabs>

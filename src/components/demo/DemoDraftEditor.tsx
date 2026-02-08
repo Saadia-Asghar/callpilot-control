@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
 
 interface DraftStep {
   id: string;
@@ -29,8 +30,9 @@ const typeColors: Record<string, string> = {
 };
 
 interface Props {
-  onDemoUsed: () => void;
+  onDemoUsed: () => void | Promise<void>;
   remaining: number;
+  sessionId?: string;
 }
 
 export function DemoDraftEditor({ onDemoUsed, remaining }: Props) {

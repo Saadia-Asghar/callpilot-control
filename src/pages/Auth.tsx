@@ -46,13 +46,18 @@ export default function Auth() {
     setSubmitting(false);
 
     if (error) {
-      let msg = error.message;
-      if (msg.includes("already registered")) msg = "This email is already registered. Try logging in.";
-      if (msg.includes("Invalid login")) msg = "Invalid email or password.";
+      let msg = typeof error === 'string' ? error : error.message || 'Authentication failed';
+      if (msg.includes("already registered") || msg.includes("Email already registered")) {
+        msg = "This email is already registered. Try logging in.";
+      }
+      if (msg.includes("Invalid login") || msg.includes("Invalid email")) {
+        msg = "Invalid email or password.";
+      }
       toast({ title: "Error", description: msg, variant: "destructive" });
-    } else if (mode === "signup") {
-      toast({ title: "Account created!", description: "Check your email to confirm, then log in." });
-      setMode("login");
+    } else {
+      // Success - redirect to dashboard
+      toast({ title: mode === "signup" ? "Account created!" : "Welcome back!", description: "Redirecting to dashboard..." });
+      setTimeout(() => navigate("/dashboard"), 1000);
     }
   };
 
