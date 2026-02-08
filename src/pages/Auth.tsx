@@ -51,14 +51,19 @@ export default function Auth() {
       if (msg.includes("already registered") || msg.includes("Email already registered")) {
         msg = "This email is already registered. Try logging in.";
       }
-      if (msg.includes("Invalid login") || msg.includes("Invalid email")) {
+      if (msg.includes("Invalid login") || msg.includes("Invalid email") || msg.includes("Invalid login credentials")) {
         msg = "Invalid email or password.";
       }
       toast({ title: "Error", description: msg, variant: "destructive" });
     } else {
-      // Success - redirect to dashboard
-      toast({ title: mode === "signup" ? "Account created!" : "Welcome back!", description: "Redirecting to dashboard..." });
-      setTimeout(() => navigate("/dashboard"), 1000);
+      // Success — navigate immediately; useAuth will set user via onAuthStateChange
+      toast({
+        title: mode === "signup" ? "Account created!" : "Welcome back!",
+        description: mode === "signup"
+          ? "Check your email if confirmation is required, or you'll be redirected now."
+          : "Redirecting to dashboard...",
+      });
+      navigate("/dashboard");
     }
   };
 

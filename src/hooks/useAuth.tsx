@@ -34,15 +34,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     const initAuth = async () => {
-      // 1. Check Supabase session first (handles Google OAuth redirects too)
+      // 1. Check Supabase session (handles Google OAuth redirects too)
       if (isSupabaseConfigured && supabase) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           if (session?.user && !cancelled) {
             setUser({
               id: session.user.id,
               email: session.user.email ?? "",
-              name: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name,
+              name:
+                session.user.user_metadata?.full_name ??
+                session.user.user_metadata?.name,
               provider: "supabase",
             });
             setLoading(false);
@@ -53,26 +57,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2. Check backend token
-      const token = localStorage.getItem("callpilot_token");
-      if (token) {
-        try {
-          // Try to validate token with backend /auth/me
-          const me: any = await api.request("/auth/me");
-          if (me && !cancelled) {
-            setUser({
-              id: me.operator_id ?? me.id ?? 0,
-              email: me.email ?? "",
-              name: me.name,
-              business_name: me.business_name,
-              provider: "backend",
-            });
-            setLoading(false);
-            return;
+      // 2. Check backend token (only when Supabase isn't configured — i.e. local dev)
+      if (!isSupabaseConfigured) {
+        const token = localStorage.getItem("callpilot_token");
+        if (token) {
+          try {
+            const me: any = await api.request("/auth/me");
+            if (me && !cancelled) {
+              setUser({
+                id: me.operator_id ?? me.id ?? 0,
+                email: me.email ?? "",
+                name: me.name,
+                business_name: me.business_name,
+                provider: "backend",
+              });
+              setLoading(false);
+              return;
+            }
+          } catch {
+            localStorage.removeItem("callpilot_token");
           }
-        } catch {
-          // Token invalid or backend unreachable — clear it
-          localStorage.removeItem("callpilot_token");
         }
       }
 
@@ -89,11 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser({
             id: session.user.id,
             email: session.user.email ?? "",
-            name: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name,
+            name:
+              session.user.user_metadata?.full_name ??
+              session.user.user_metadata?.name,
             provider: "supabase",
           });
-        } else if (user?.provider === "supabase") {
-          setUser(null);
+        } else {
+          // Only clear user if they were a Supabase user
+          setUser((prev) => (prev?.provider === "supabase" ? null : prev));
         }
         setLoading(false);
       });
@@ -108,8 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Sign Up ──
-  const signUp = async (email: string, password: string, name?: string, business_name?: string) => {
-    // Try Supabase first (works when deployed without backend)
+  const signUp = async (
+    email: string,
+    password: string,
+    name?: string,
+    business_name?: string
+  ) => {
+    // When Supabase is configured (deployed on Lovable/Vercel), use it exclusively
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.signUp({
@@ -117,8 +129,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
           options: { data: { full_name: name, business_name } },
         });
-        if (error) throw error;
+        if (error) {
+          return { error: { message: error.message } };
+        }
         if (data.user) {
+          // Supabase may return a user even if email confirmation is required
+          // identities array is empty when email is already taken (in some configs)
+          if (
+            data.user.identities &&
+            data.user.identities.length === 0
+          ) {
+            return {
+              error: {
+                message:
+                  "This email is already registered. Try logging in instead.",
+              },
+            };
+          }
           setUser({
             id: data.user.id,
             email: data.user.email ?? email,
@@ -128,33 +155,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           return { error: null };
         }
+        return { error: null }; // signup successful, may need email confirmation
       } catch (err: any) {
-        // If Supabase fails with a real error (not network), return it
-        if (err?.message && !err.message.includes("fetch")) {
-          return { error: { message: err.message } };
-        }
-        // Otherwise fall through to backend
+        return {
+          error: { message: err?.message || "Sign up failed" },
+        };
       }
     }
 
-    // Fallback: try Python backend
+    // Fallback: Python backend (local dev only)
     try {
       await api.register(email, password, name, business_name);
       setUser({ id: 0, email, name, business_name, provider: "backend" });
       return { error: null };
     } catch (error: any) {
-      const errorMsg = error.message || error.detail || "Registration failed";
+      const errorMsg =
+        error.message || error.detail || "Registration failed";
       return { error: { message: errorMsg } };
     }
   };
 
   // ── Sign In ──
   const signIn = async (email: string, password: string) => {
-    // Try Supabase first
+    // When Supabase is configured, use it exclusively
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) {
+          return { error: { message: error.message } };
+        }
         if (data.user) {
           setUser({
             id: data.user.id,
@@ -164,16 +196,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           return { error: null };
         }
+        return { error: { message: "Login failed" } };
       } catch (err: any) {
-        // If Supabase gives a real auth error (invalid credentials), return it
-        if (err?.message && !err.message.includes("fetch")) {
-          return { error: { message: err.message } };
-        }
-        // Otherwise fall through to backend
+        return {
+          error: { message: err?.message || "Login failed" },
+        };
       }
     }
 
-    // Fallback: try Python backend
+    // Fallback: Python backend (local dev only)
     try {
       await api.login(email, password);
       setUser({ id: 0, email, provider: "backend" });
@@ -186,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Sign Out ──
   const signOut = async () => {
-    if (isSupabaseConfigured && supabase && user?.provider === "supabase") {
+    if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }
     api.logout();
