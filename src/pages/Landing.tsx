@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { DemoVoiceClone } from "@/components/demo/DemoVoiceClone";
 import { DemoScheduler } from "@/components/demo/DemoScheduler";
 import { DemoDraftEditor } from "@/components/demo/DemoDraftEditor";
+import { LiveVoiceDemo } from "@/components/demo/LiveVoiceDemo";
 
 
 const DEMO_LIMIT = 3;
@@ -185,8 +186,11 @@ export default function Landing() {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <Tabs defaultValue="voice" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 mb-6">
+          <Tabs defaultValue="talk" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 mb-6">
+              <TabsTrigger value="talk" className="gap-1.5 text-xs">
+                <Phone className="h-3.5 w-3.5" /> Talk Live
+              </TabsTrigger>
               <TabsTrigger value="voice" className="gap-1.5 text-xs">
                 <Volume2 className="h-3.5 w-3.5" /> Voice Clone
                 {voiceRemaining > 0 && <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">{voiceRemaining}</Badge>}
@@ -202,6 +206,9 @@ export default function Landing() {
             </TabsList>
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
+              <TabsContent value="talk" className="mt-0">
+                <LiveVoiceDemo title="🎙️ Talk to CallPilot's AI Scheduling Agent" />
+              </TabsContent>
               <TabsContent value="voice" className="mt-0">
                 <DemoVoiceClone 
                   onDemoUsed={() => incrementUsage('voice_clone')} 
