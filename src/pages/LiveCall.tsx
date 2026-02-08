@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Phone, Mic, MicOff, Pause, Play, Hand, ShieldCheck, AlertTriangle, ArrowUpRight, Wifi, WifiOff } from "lucide-react";
+import { Phone, Mic, MicOff, Pause, Play, Hand, ShieldCheck, AlertTriangle, ArrowUpRight, Wifi, WifiOff, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { reasoningStream, trustIndicators } from "@/data/agentIntelligenceData";
 import { useToast } from "@/hooks/use-toast";
 import { useConversation } from "@elevenlabs/react";
 import { SUPABASE_URL, SUPABASE_KEY } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TranscriptLine {
   speaker: "agent" | "caller";
@@ -41,6 +42,7 @@ export default function LiveCall() {
   const [paused, setPaused] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isSavingMeeting, setIsSavingMeeting] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [turnCount, setTurnCount] = useState(0);
   const [confidence, setConfidence] = useState(94);
@@ -143,14 +145,45 @@ export default function LiveCall() {
     }
   }, [conversation, toast]);
 
+  const saveMeetingDetails = useCallback(async (transcriptData: TranscriptLine[]) => {
+    if (transcriptData.length < 2) return; // Need meaningful conversation
+    setIsSavingMeeting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-meeting-details", {
+        body: { transcript: transcriptData },
+      });
+      if (error) throw error;
+      if (data?.booking) {
+        toast({
+          title: "Meeting Saved!",
+          description: `"${data.booking.meeting_title}" on ${data.booking.meeting_date} at ${data.booking.meeting_time}`,
+        });
+      } else if (data?.error) {
+        console.warn("Could not extract meeting:", data.error);
+      }
+    } catch (err: any) {
+      console.error("Failed to save meeting:", err);
+      toast({
+        title: "Meeting extraction failed",
+        description: err.message || "Could not extract meeting details from conversation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingMeeting(false);
+    }
+  }, [toast]);
+
   const stopConversation = useCallback(async () => {
+    const currentTranscript = [...transcript];
     await conversation.endSession();
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     toast({ title: "Call Ended", description: `Conversation lasted ${formatTime(elapsed)}.` });
-  }, [conversation, elapsed, toast]);
+    // Auto-extract and save meeting details
+    saveMeetingDetails(currentTranscript);
+  }, [conversation, elapsed, toast, transcript, saveMeetingDetails]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -383,17 +416,38 @@ export default function LiveCall() {
 
           <GlassPanel>
             <GlassPanelHeader>
-              <span className="text-xs font-semibold text-card-foreground">Booking Decision</span>
+              <span className="text-xs font-semibold text-card-foreground">Meeting Notes</span>
             </GlassPanelHeader>
             <GlassPanelContent>
-              <div className="rounded-lg gradient-accent p-3">
-                <p className="text-xs font-semibold text-accent-foreground">Tuesday, 10:30 AM</p>
-                <p className="text-[10px] text-muted-foreground">30 min · In-person · Awaiting confirmation</p>
-              </div>
-              <div className="mt-2 flex gap-1.5">
-                <Button size="sm" className="flex-1 h-7 text-[10px] gradient-primary text-primary-foreground border-0">Approve</Button>
-                <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px]">Override</Button>
-              </div>
+              {transcript.length > 0 ? (
+                <>
+                  <div className="rounded-lg gradient-accent p-3">
+                    <p className="text-xs font-semibold text-accent-foreground">
+                      {transcript.length} turns captured
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Meeting details will be auto-extracted when the call ends
+                    </p>
+                  </div>
+                  <div className="mt-2 flex gap-1.5">
+                    <Button
+                      size="sm"
+                      className="flex-1 h-7 text-[10px] gradient-primary text-primary-foreground border-0 gap-1"
+                      onClick={() => saveMeetingDetails(transcript)}
+                      disabled={isSavingMeeting || transcript.length < 2}
+                    >
+                      <Save className="h-3 w-3" />
+                      {isSavingMeeting ? "Saving..." : "Save Meeting Now"}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg gradient-accent p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Start a call to capture meeting details automatically
+                  </p>
+                </div>
+              )}
             </GlassPanelContent>
           </GlassPanel>
         </div>

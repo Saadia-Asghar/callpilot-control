@@ -35,6 +35,7 @@ import CallSimulation from "./pages/CallSimulation";
 import ExportCRM from "./pages/ExportCRM";
 import Feedback from "./pages/Feedback";
 import AISuggestions from "./pages/AISuggestions";
+import MeetingBookings from "./pages/MeetingBookings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,7 @@ const App = () => (
                       <Route path="/export" element={<ExportCRM />} />
                       <Route path="/feedback" element={<Feedback />} />
                       <Route path="/ai-suggestions" element={<AISuggestions />} />
+                      <Route path="/meetings" element={<MeetingBookings />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>

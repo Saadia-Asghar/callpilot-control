@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.elevenlabs-conversation-token]
 verify_jwt = false
+
+[functions.extract-meeting-details]
+verify_jwt = false
