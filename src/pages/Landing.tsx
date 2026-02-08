@@ -199,7 +199,7 @@ export default function Landing() {
           {/* Guided tooltip */}
           <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground">
             <Brain className="h-3 w-3" />
-            Try: schedule a call → preview AI draft → clone your voice → export recording
+            Try: schedule a call → preview AI draft → clone your voice → save voice → apply to script → export recording
           </div>
         </div>
       </section>
