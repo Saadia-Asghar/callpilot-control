@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
@@ -24,7 +25,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="flex h-14 items-center gap-4 border-b border-border px-6">
             <SidebarTrigger />
             <div className="flex-1" />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <NotificationCenter />
               <Button
                 variant="ghost"
                 size="icon"

@@ -1,4 +1,4 @@
-import { CalendarCheck, Phone, TrendingUp, Clock } from "lucide-react";
+import { CalendarCheck, Phone, TrendingUp, Clock, PhoneMissed, Users, FileText } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { CallVolumeChart } from "@/components/dashboard/CallVolumeChart";
@@ -10,7 +10,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-slide-in">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Overview</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Overview Dashboard</h1>
         <p className="text-sm text-muted-foreground">Monitor your AI scheduling agent in real-time</p>
       </div>
 
@@ -23,11 +23,12 @@ export default function Dashboard() {
           sparkline={[14, 18, 16, 22, 20, 24, 24]}
         />
         <StatCard
-          title="Upcoming"
-          value={dashboardStats.upcomingAppointments}
-          subtitle="Next 24 hours"
-          icon={Clock}
-          sparkline={[6, 8, 5, 7, 9, 8, 8]}
+          title="Missed Recovered"
+          value={3}
+          subtitle="Out of 4 missed"
+          icon={PhoneMissed}
+          trend={{ value: 75, positive: true }}
+          sparkline={[1, 0, 2, 1, 3, 2, 3]}
         />
         <StatCard
           title="Success Rate"
@@ -37,11 +38,11 @@ export default function Dashboard() {
           sparkline={[88, 90, 89, 91, 92, 93, 92]}
         />
         <StatCard
-          title="Total Calls"
-          value={dashboardStats.totalCalls}
-          subtitle="This week"
-          icon={Phone}
-          sparkline={[120, 135, 128, 142, 150, 148, 156]}
+          title="Draft Calls"
+          value={4}
+          subtitle="2 pending review"
+          icon={FileText}
+          sparkline={[2, 3, 1, 4, 3, 4, 4]}
         />
       </div>
 

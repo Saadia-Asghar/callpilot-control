@@ -8,7 +8,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
-import Index from "./pages/Index";
+import Onboarding from "./pages/Onboarding";
+import Dashboard from "./pages/Dashboard";
 import LiveCall from "./pages/LiveCall";
 import CalendarView from "./pages/CalendarView";
 import CallLogs from "./pages/CallLogs";
@@ -22,6 +23,14 @@ import ReplayStudio from "./pages/ReplayStudio";
 import MemoryMap from "./pages/MemoryMap";
 import FailureForensics from "./pages/FailureForensics";
 import ExperimentMode from "./pages/ExperimentMode";
+import CallDrafts from "./pages/CallDrafts";
+import CustomScripts from "./pages/CustomScripts";
+import IndustryPresets from "./pages/IndustryPresets";
+import MissedCallRecovery from "./pages/MissedCallRecovery";
+import CallSimulation from "./pages/CallSimulation";
+import ExportCRM from "./pages/ExportCRM";
+import Feedback from "./pages/Feedback";
+import AISuggestions from "./pages/AISuggestions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +49,8 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Routes>
-                      <Route path="/" element={<Index />} />
+                      <Route path="/" element={<Onboarding />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/live-call" element={<LiveCall />} />
                       <Route path="/calendar" element={<CalendarView />} />
                       <Route path="/call-logs" element={<CallLogs />} />
@@ -54,6 +64,14 @@ const App = () => (
                       <Route path="/memory-map" element={<MemoryMap />} />
                       <Route path="/forensics" element={<FailureForensics />} />
                       <Route path="/experiments" element={<ExperimentMode />} />
+                      <Route path="/drafts" element={<CallDrafts />} />
+                      <Route path="/scripts" element={<CustomScripts />} />
+                      <Route path="/presets" element={<IndustryPresets />} />
+                      <Route path="/recovery" element={<MissedCallRecovery />} />
+                      <Route path="/simulation" element={<CallSimulation />} />
+                      <Route path="/export" element={<ExportCRM />} />
+                      <Route path="/feedback" element={<Feedback />} />
+                      <Route path="/ai-suggestions" element={<AISuggestions />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>
