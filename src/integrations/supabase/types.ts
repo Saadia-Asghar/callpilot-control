@@ -14,7 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_settings: {
+        Row: {
+          auto_confirm: boolean
+          buffer_time: number
+          business_hours_end: string
+          business_hours_start: string
+          created_at: string
+          id: string
+          slot_duration: number
+          timezone: string
+          updated_at: string
+          voice_persona: string
+        }
+        Insert: {
+          auto_confirm?: boolean
+          buffer_time?: number
+          business_hours_end?: string
+          business_hours_start?: string
+          created_at?: string
+          id?: string
+          slot_duration?: number
+          timezone?: string
+          updated_at?: string
+          voice_persona?: string
+        }
+        Update: {
+          auto_confirm?: boolean
+          buffer_time?: number
+          business_hours_end?: string
+          business_hours_start?: string
+          created_at?: string
+          id?: string
+          slot_duration?: number
+          timezone?: string
+          updated_at?: string
+          voice_persona?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          created_at: string
+          day: number
+          duration: number
+          id: string
+          status: string
+          time: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          day?: number
+          duration?: number
+          id?: string
+          status?: string
+          time: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          day?: number
+          duration?: number
+          id?: string
+          status?: string
+          time?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      call_logs: {
+        Row: {
+          caller_name: string
+          created_at: string
+          date: string
+          duration: string
+          id: string
+          intent: string
+          outcome: string
+          status: string
+          summary: string | null
+          transcript: string | null
+        }
+        Insert: {
+          caller_name: string
+          created_at?: string
+          date?: string
+          duration?: string
+          id?: string
+          intent?: string
+          outcome?: string
+          status?: string
+          summary?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          caller_name?: string
+          created_at?: string
+          date?: string
+          duration?: string
+          id?: string
+          intent?: string
+          outcome?: string
+          status?: string
+          summary?: string | null
+          transcript?: string | null
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          last_contact: string
+          name: string
+          preferences: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_contact?: string
+          name: string
+          preferences?: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_contact?: string
+          name?: string
+          preferences?: string[]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
