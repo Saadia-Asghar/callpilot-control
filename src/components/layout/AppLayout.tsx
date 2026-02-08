@@ -1,11 +1,20 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, LogOut } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await signOut();
+    toast({ title: "Logged out", description: "See you next time!" });
+  };
 
   return (
     <SidebarProvider>
@@ -25,8 +34,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full gradient-primary text-xs font-semibold text-primary-foreground">
-                CP
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={handleLogout}
+                aria-label="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full gradient-primary text-xs font-semibold text-primary-foreground" title={user?.email ?? ""}>
+                {user?.email?.[0]?.toUpperCase() ?? "O"}
               </div>
             </div>
           </header>

@@ -1,13 +1,21 @@
-import { useState } from "react";
-import { Phone, Mic, Pause, Play, Hand, ShieldCheck, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Phone, Mic, Pause, Play, Hand, ShieldCheck, AlertTriangle, ArrowUpRight, Wifi, WifiOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { GlassPanel, GlassPanelHeader, GlassPanelContent } from "@/components/agent/GlassPanel";
 import { ReasoningTimeline } from "@/components/agent/ReasoningTimeline";
-import { liveTranscript, toolCalls } from "@/data/mockData";
+import { liveTranscript as initialTranscript, toolCalls } from "@/data/mockData";
 import { reasoningStream, trustIndicators } from "@/data/agentIntelligenceData";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface TranscriptLine {
+  speaker: "agent" | "caller";
+  text: string;
+  timestamp: string;
+}
 
 const toolStatusColors = {
   success: "bg-success/15 text-success border-success/30",
@@ -24,7 +32,36 @@ const trustStatusColors = {
 
 export default function LiveCall() {
   const [paused, setPaused] = useState(false);
+  const [transcript, setTranscript] = useState<TranscriptLine[]>(initialTranscript);
+  const [connected, setConnected] = useState(false);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Real-time subscription for live call events
+  useEffect(() => {
+    const channel = supabase
+      .channel("live-call-events")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "live_call_events", filter: "event_type=eq.transcript" },
+        (payload) => {
+          const e = payload.new as any;
+          setTranscript((prev) => [
+            ...prev,
+            { speaker: e.speaker === "agent" ? "agent" : "caller", text: e.content, timestamp: e.detail ?? "" },
+          ]);
+        }
+      )
+      .subscribe((status) => {
+        setConnected(status === "SUBSCRIBED");
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [transcript]);
 
   const handlePause = () => {
     setPaused(!paused);
@@ -47,12 +84,14 @@ export default function LiveCall() {
           <p className="text-sm text-muted-foreground">Unified operator cockpit — Call #1847</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant={paused ? "default" : "outline"}
+          {/* Connection indicator */}
+          <div className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] ${connected ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+            {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+            {connected ? "Live" : "Disconnected"}
+          </div>
+          <Button size="sm" variant={paused ? "default" : "outline"}
             className={`gap-1.5 text-xs ${paused ? "gradient-primary text-primary-foreground border-0" : ""}`}
-            onClick={handlePause}
-          >
+            onClick={handlePause}>
             {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
             {paused ? "Resume" : "Pause"}
           </Button>
@@ -68,7 +107,7 @@ export default function LiveCall() {
         </div>
       </div>
 
-      {/* Confidence + Interruption Bar */}
+      {/* Confidence Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <GlassPanel>
           <GlassPanelContent className="py-3 flex items-center gap-3">
@@ -109,7 +148,7 @@ export default function LiveCall() {
 
       {/* Main 3-panel layout */}
       <div className="grid gap-4 lg:grid-cols-12">
-        {/* Transcript — wide */}
+        {/* Transcript */}
         <div className="lg:col-span-5">
           <GlassPanel className="h-full">
             <GlassPanelHeader>
@@ -123,26 +162,34 @@ export default function LiveCall() {
               </div>
             </GlassPanelHeader>
             <GlassPanelContent className="max-h-[500px] overflow-auto space-y-3">
-              {liveTranscript.map((line, i) => (
-                <div key={i} className={`flex gap-2 ${line.speaker === "agent" ? "" : "flex-row-reverse"}`}>
-                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
-                    line.speaker === "agent" ? "gradient-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                  }`}>
-                    {line.speaker === "agent" ? "AI" : "C"}
-                  </div>
-                  <div className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
-                    line.speaker === "agent" ? "bg-accent text-accent-foreground" : "bg-secondary text-secondary-foreground"
-                  }`}>
-                    {line.text}
-                    <span className="ml-2 text-[9px] text-muted-foreground">{line.timestamp}</span>
-                  </div>
-                </div>
-              ))}
+              <AnimatePresence initial={false}>
+                {transcript.map((line, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex gap-2 ${line.speaker === "agent" ? "" : "flex-row-reverse"}`}
+                  >
+                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+                      line.speaker === "agent" ? "gradient-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                    }`}>
+                      {line.speaker === "agent" ? "AI" : "C"}
+                    </div>
+                    <div className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
+                      line.speaker === "agent" ? "bg-accent text-accent-foreground" : "bg-secondary text-secondary-foreground"
+                    }`}>
+                      {line.text}
+                      <span className="ml-2 text-[9px] text-muted-foreground">{line.timestamp}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={transcriptEndRef} />
             </GlassPanelContent>
           </GlassPanel>
         </div>
 
-        {/* Reasoning Timeline — center */}
+        {/* Reasoning Timeline */}
         <div className="lg:col-span-4">
           <GlassPanel className="h-full">
             <GlassPanelHeader>
@@ -155,9 +202,8 @@ export default function LiveCall() {
           </GlassPanel>
         </div>
 
-        {/* Right panel — Trust + Tools + Decision */}
+        {/* Right panel */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Trust indicators */}
           <GlassPanel glow>
             <GlassPanelHeader>
               <span className="text-xs font-semibold text-card-foreground flex items-center gap-1.5">
@@ -173,15 +219,12 @@ export default function LiveCall() {
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-medium text-card-foreground truncate">{t.label}</p>
                   </div>
-                  <Badge variant="outline" className={`text-[8px] px-1 ${trustStatusColors[t.status]}`}>
-                    {t.status}
-                  </Badge>
+                  <Badge variant="outline" className={`text-[8px] px-1 ${trustStatusColors[t.status]}`}>{t.status}</Badge>
                 </div>
               ))}
             </GlassPanelContent>
           </GlassPanel>
 
-          {/* Tool Calls */}
           <GlassPanel>
             <GlassPanelHeader>
               <span className="text-xs font-semibold text-card-foreground">Tool Calls</span>
@@ -189,15 +232,12 @@ export default function LiveCall() {
             <GlassPanelContent>
               <div className="flex flex-wrap gap-1.5">
                 {toolCalls.map((tool, i) => (
-                  <Badge key={i} variant="outline" className={`font-mono text-[10px] ${toolStatusColors[tool.status]}`}>
-                    {tool.name}
-                  </Badge>
+                  <Badge key={i} variant="outline" className={`font-mono text-[10px] ${toolStatusColors[tool.status]}`}>{tool.name}</Badge>
                 ))}
               </div>
             </GlassPanelContent>
           </GlassPanel>
 
-          {/* Booking Decision */}
           <GlassPanel>
             <GlassPanelHeader>
               <span className="text-xs font-semibold text-card-foreground">Booking Decision</span>
@@ -208,12 +248,8 @@ export default function LiveCall() {
                 <p className="text-[10px] text-muted-foreground">30 min · In-person · Awaiting confirmation</p>
               </div>
               <div className="mt-2 flex gap-1.5">
-                <Button size="sm" className="flex-1 h-7 text-[10px] gradient-primary text-primary-foreground border-0">
-                  Approve
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px]">
-                  Override
-                </Button>
+                <Button size="sm" className="flex-1 h-7 text-[10px] gradient-primary text-primary-foreground border-0">Approve</Button>
+                <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px]">Override</Button>
               </div>
             </GlassPanelContent>
           </GlassPanel>

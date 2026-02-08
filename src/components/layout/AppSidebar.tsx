@@ -1,33 +1,14 @@
 import {
-  LayoutDashboard,
-  Phone,
-  CalendarDays,
-  FileText,
-  Settings,
-  Brain,
-  Headphones,
-  GitBranch,
-  Zap,
-  Hand,
-  Mic,
-  Play,
-  Network,
-  AlertOctagon,
-  FlaskConical,
+  LayoutDashboard, Phone, CalendarDays, FileText, Settings, Brain, Headphones,
+  GitBranch, Zap, Hand, Mic, Play, Network, AlertOctagon, FlaskConical, Moon, Sun,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
+import { useTheme } from "@/hooks/useTheme";
+import { Button } from "@/components/ui/button";
 
 const coreNav = [
   { title: "Overview", url: "/", icon: LayoutDashboard },
@@ -40,7 +21,7 @@ const intelligenceNav = [
   { title: "Agent Thinking", url: "/agent-thinking", icon: GitBranch },
   { title: "Simulator & Trust", url: "/simulator", icon: Zap },
   { title: "Human Override", url: "/human-loop", icon: Hand },
-  { title: "Voice Lab", url: "/voice-lab", icon: Mic },
+  { title: "Voice Studio", url: "/voice-lab", icon: Mic },
   { title: "Replay Studio", url: "/replay", icon: Play },
   { title: "Memory Map", url: "/memory-map", icon: Network },
   { title: "Failure Forensics", url: "/forensics", icon: AlertOctagon },
@@ -61,12 +42,9 @@ function NavGroup({ label, items }: { label: string; items: typeof coreNav }) {
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
-                <NavLink
-                  to={item.url}
-                  end={item.url === "/"}
+                <NavLink to={item.url} end={item.url === "/"}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                  activeClassName="bg-accent text-accent-foreground font-medium"
-                >
+                  activeClassName="bg-accent text-accent-foreground font-medium">
                   <item.icon className="h-4 w-4 shrink-0" />
                   <span>{item.title}</span>
                 </NavLink>
@@ -82,6 +60,7 @@ function NavGroup({ label, items }: { label: string; items: typeof coreNav }) {
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -103,6 +82,12 @@ export function AppSidebar() {
         <NavGroup label="Intelligence" items={intelligenceNav} />
         <NavGroup label="Config" items={configNav} />
       </SidebarContent>
+      <SidebarFooter className="p-3">
+        <Button variant="ghost" size={collapsed ? "icon" : "sm"} className="w-full gap-2 text-xs justify-start" onClick={toggleTheme}>
+          {theme === "dark" ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+          {!collapsed && (theme === "dark" ? "Light Mode" : "Dark Mode")}
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }

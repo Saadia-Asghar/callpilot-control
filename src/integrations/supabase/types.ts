@@ -25,6 +25,7 @@ export type Database = {
           slot_duration: number
           timezone: string
           updated_at: string
+          user_id: string | null
           voice_persona: string
         }
         Insert: {
@@ -37,6 +38,7 @@ export type Database = {
           slot_duration?: number
           timezone?: string
           updated_at?: string
+          user_id?: string | null
           voice_persona?: string
         }
         Update: {
@@ -49,6 +51,7 @@ export type Database = {
           slot_duration?: number
           timezone?: string
           updated_at?: string
+          user_id?: string | null
           voice_persona?: string
         }
         Relationships: []
@@ -62,6 +65,7 @@ export type Database = {
           status: string
           time: string
           title: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -71,6 +75,7 @@ export type Database = {
           status?: string
           time: string
           title: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -80,6 +85,7 @@ export type Database = {
           status?: string
           time?: string
           title?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -95,6 +101,7 @@ export type Database = {
           status: string
           summary: string | null
           transcript: string | null
+          user_id: string | null
         }
         Insert: {
           caller_name: string
@@ -107,6 +114,7 @@ export type Database = {
           status?: string
           summary?: string | null
           transcript?: string | null
+          user_id?: string | null
         }
         Update: {
           caller_name?: string
@@ -119,6 +127,70 @@ export type Database = {
           status?: string
           summary?: string | null
           transcript?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      live_call_events: {
+        Row: {
+          call_id: string
+          confidence: number | null
+          content: string
+          created_at: string
+          detail: string | null
+          event_type: string
+          id: string
+          speaker: string | null
+        }
+        Insert: {
+          call_id?: string
+          confidence?: number | null
+          content: string
+          created_at?: string
+          detail?: string | null
+          event_type: string
+          id?: string
+          speaker?: string | null
+        }
+        Update: {
+          call_id?: string
+          confidence?: number | null
+          content?: string
+          created_at?: string
+          detail?: string | null
+          event_type?: string
+          id?: string
+          speaker?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          theme_preference: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          theme_preference?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          theme_preference?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -129,6 +201,7 @@ export type Database = {
           last_contact: string
           name: string
           preferences: string[]
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -136,6 +209,7 @@ export type Database = {
           last_contact?: string
           name: string
           preferences?: string[]
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -143,6 +217,61 @@ export type Database = {
           last_contact?: string
           name?: string
           preferences?: string[]
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      voice_profiles: {
+        Row: {
+          created_at: string
+          elevenlabs_voice_id: string | null
+          energy: number
+          expressiveness: number
+          id: string
+          is_business_voice: boolean
+          is_cloned: boolean
+          is_default: boolean
+          last_used_at: string | null
+          name: string
+          professionalism: number
+          quality_score: number
+          speed: number
+          user_id: string | null
+          warmth: number
+        }
+        Insert: {
+          created_at?: string
+          elevenlabs_voice_id?: string | null
+          energy?: number
+          expressiveness?: number
+          id?: string
+          is_business_voice?: boolean
+          is_cloned?: boolean
+          is_default?: boolean
+          last_used_at?: string | null
+          name: string
+          professionalism?: number
+          quality_score?: number
+          speed?: number
+          user_id?: string | null
+          warmth?: number
+        }
+        Update: {
+          created_at?: string
+          elevenlabs_voice_id?: string | null
+          energy?: number
+          expressiveness?: number
+          id?: string
+          is_business_voice?: boolean
+          is_cloned?: boolean
+          is_default?: boolean
+          last_used_at?: string | null
+          name?: string
+          professionalism?: number
+          quality_score?: number
+          speed?: number
+          user_id?: string | null
+          warmth?: number
         }
         Relationships: []
       }
