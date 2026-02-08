@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, FileText, Trash2, Plus, Loader2 } from "lucide-react";
+import { Calendar, Clock, FileText, Trash2, Plus, Loader2, Video, Phone as PhoneIcon, Monitor } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,14 @@ const statusColors: Record<string, string> = {
   scheduled: "bg-primary/15 text-primary border-primary/30",
   completed: "bg-success/15 text-success border-success/30",
   cancelled: "bg-destructive/15 text-destructive border-destructive/30",
+};
+
+const platformLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+  phone: { label: "Phone", icon: <PhoneIcon className="h-3 w-3" /> },
+  google_meet: { label: "Google Meet", icon: <Video className="h-3 w-3" /> },
+  teams: { label: "Teams", icon: <Monitor className="h-3 w-3" /> },
+  zoom: { label: "Zoom", icon: <Video className="h-3 w-3" /> },
+  other: { label: "Other", icon: <Video className="h-3 w-3" /> },
 };
 
 export default function MeetingBookings() {
@@ -101,7 +109,7 @@ export default function MeetingBookings() {
                 </Badge>
               </GlassPanelHeader>
               <GlassPanelContent className="space-y-3">
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> {b.meeting_date}
                   </span>
@@ -111,9 +119,26 @@ export default function MeetingBookings() {
                   <span>{b.duration_minutes}min</span>
                 </div>
 
-                <div>
+                <div className="flex items-center gap-2">
                   <p className="text-xs font-medium text-card-foreground">Caller: {b.caller_name}</p>
+                  {(() => {
+                    const platform = platformLabels[(b as any).call_platform] || platformLabels.phone;
+                    return (
+                      <Badge variant="outline" className="text-[10px] gap-1 flex items-center">
+                        {platform.icon} {platform.label}
+                      </Badge>
+                    );
+                  })()}
                 </div>
+
+                {(b as any).meeting_link && (
+                  <div className="rounded-lg bg-primary/5 border border-primary/20 p-2">
+                    <a href={(b as any).meeting_link} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline break-all">
+                      {(b as any).meeting_link}
+                    </a>
+                  </div>
+                )}
 
                 {b.notes && (
                   <div className="rounded-lg bg-accent/50 p-2">

@@ -166,11 +166,13 @@ export type Database = {
       }
       meeting_bookings: {
         Row: {
+          call_platform: string
           caller_name: string
           created_at: string
           duration_minutes: number
           id: string
           meeting_date: string
+          meeting_link: string | null
           meeting_time: string
           meeting_title: string
           notes: string | null
@@ -182,11 +184,13 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          call_platform?: string
           caller_name: string
           created_at?: string
           duration_minutes?: number
           id?: string
           meeting_date: string
+          meeting_link?: string | null
           meeting_time: string
           meeting_title: string
           notes?: string | null
@@ -198,11 +202,13 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          call_platform?: string
           caller_name?: string
           created_at?: string
           duration_minutes?: number
           id?: string
           meeting_date?: string
+          meeting_link?: string | null
           meeting_time?: string
           meeting_title?: string
           notes?: string | null
