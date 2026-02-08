@@ -1,6 +1,9 @@
 import { CalendarCheck, Phone, TrendingUp, Clock } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { CallVolumeChart } from "@/components/dashboard/CallVolumeChart";
+import { SuccessRateDonut } from "@/components/dashboard/SuccessRateDonut";
+import { PeakHoursChart } from "@/components/dashboard/PeakHoursChart";
 import { dashboardStats } from "@/data/mockData";
 
 export default function Dashboard() {
@@ -17,45 +20,39 @@ export default function Dashboard() {
           value={dashboardStats.totalBookingsToday}
           icon={CalendarCheck}
           trend={{ value: 12, positive: true }}
+          sparkline={[14, 18, 16, 22, 20, 24, 24]}
         />
         <StatCard
           title="Upcoming"
           value={dashboardStats.upcomingAppointments}
           subtitle="Next 24 hours"
           icon={Clock}
+          sparkline={[6, 8, 5, 7, 9, 8, 8]}
         />
         <StatCard
           title="Success Rate"
           value={`${dashboardStats.callSuccessRate}%`}
           icon={TrendingUp}
           trend={{ value: 3, positive: true }}
+          sparkline={[88, 90, 89, 91, 92, 93, 92]}
         />
         <StatCard
           title="Total Calls"
           value={dashboardStats.totalCalls}
           subtitle="This week"
           icon={Phone}
+          sparkline={[120, 135, 128, 142, 150, 148, 156]}
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <CallVolumeChart />
+        <SuccessRateDonut rate={dashboardStats.callSuccessRate} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <ActivityFeed />
-        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-          <h3 className="mb-4 text-sm font-semibold text-card-foreground">Call Volume (7 Days)</h3>
-          <div className="flex h-48 items-end gap-2">
-            {[18, 24, 20, 32, 28, 22, 30].map((val, i) => (
-              <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full rounded-t-md gradient-primary transition-all hover:opacity-80"
-                  style={{ height: `${(val / 32) * 100}%` }}
-                />
-                <span className="text-[10px] text-muted-foreground">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PeakHoursChart />
       </div>
     </div>
   );

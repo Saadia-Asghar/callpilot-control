@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Network } from "lucide-react";
+import { Network, Pencil, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { GlassPanel, GlassPanelHeader, GlassPanelContent } from "@/components/agent/GlassPanel";
-import { memoryMapNodes, memoryMapEdges, type MemoryNode } from "@/data/agentIntelligenceData";
+import { memoryMapNodes as initialNodes, memoryMapEdges, type MemoryNode } from "@/data/agentIntelligenceData";
+import { useToast } from "@/hooks/use-toast";
 
 const nodeColors = {
   user: { fill: "hsl(var(--primary))", text: "hsl(var(--primary-foreground))", r: 24 },
@@ -10,11 +13,36 @@ const nodeColors = {
   booking: { fill: "hsl(var(--success))", text: "hsl(var(--success-foreground))", r: 16 },
 };
 
-function NodeDetail({ node }: { node: MemoryNode }) {
+function NodeDetail({ node, onEdit }: { node: MemoryNode; onEdit: (label: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(node.label);
+
+  const handleSave = () => {
+    onEdit(editValue);
+    setEditing(false);
+  };
+
   return (
     <GlassPanel className="animate-fade-in">
       <GlassPanelContent className="py-3 space-y-2">
-        <p className="text-xs font-semibold text-card-foreground">{node.label}</p>
+        <div className="flex items-center justify-between">
+          {editing ? (
+            <div className="flex items-center gap-1 flex-1">
+              <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} className="h-7 text-xs" autoFocus />
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleSave}><Check className="h-3 w-3" /></Button>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-card-foreground">{node.label}</p>
+              {node.type === "preference" && (
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditing(true)}>
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
+            </>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-2 text-[11px]">
           <div>
             <p className="text-muted-foreground">Type</p>
@@ -52,7 +80,16 @@ function NodeDetail({ node }: { node: MemoryNode }) {
 }
 
 export default function MemoryMap() {
+  const [nodes, setNodes] = useState(initialNodes);
   const [selectedNode, setSelectedNode] = useState<MemoryNode | null>(null);
+  const { toast } = useToast();
+
+  const handleEditNode = (label: string) => {
+    if (!selectedNode) return;
+    setNodes(nodes.map(n => n.id === selectedNode.id ? { ...n, label } : n));
+    setSelectedNode({ ...selectedNode, label });
+    toast({ title: "Memory Updated", description: `Node updated to "${label}"` });
+  };
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -79,62 +116,35 @@ export default function MemoryMap() {
             </GlassPanelHeader>
             <GlassPanelContent>
               <svg viewBox="0 0 900 420" className="w-full" style={{ minHeight: 350 }}>
-                {/* Edges */}
                 {memoryMapEdges.map((edge, i) => {
-                  const from = memoryMapNodes.find(n => n.id === edge.from);
-                  const to = memoryMapNodes.find(n => n.id === edge.to);
+                  const from = nodes.find(n => n.id === edge.from);
+                  const to = nodes.find(n => n.id === edge.to);
                   if (!from || !to) return null;
                   const isActive = selectedNode?.id === from.id || selectedNode?.id === to.id;
                   return (
-                    <line
-                      key={i}
-                      x1={from.x} y1={from.y}
-                      x2={to.x} y2={to.y}
+                    <line key={i} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
                       stroke={isActive ? "hsl(var(--primary))" : "hsl(var(--border))"}
-                      strokeWidth={isActive ? 2 : 1}
-                      opacity={isActive ? 0.8 : 0.3}
-                    />
+                      strokeWidth={isActive ? 2 : 1} opacity={isActive ? 0.8 : 0.3} />
                   );
                 })}
-
-                {/* Nodes */}
-                {memoryMapNodes.map((node) => {
+                {nodes.map((node) => {
                   const config = nodeColors[node.type];
                   const isActive = selectedNode?.id === node.id;
                   return (
-                    <motion.g
-                      key={node.id}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedNode(isActive ? null : node)}
-                    >
-                      {/* Decay ring */}
+                    <motion.g key={node.id} initial={{ scale: 0 }} animate={{ scale: 1 }} className="cursor-pointer"
+                      onClick={() => setSelectedNode(isActive ? null : node)}>
                       {node.decay !== undefined && (
-                        <circle
-                          cx={node.x} cy={node.y} r={config.r + 4}
-                          fill="none"
+                        <circle cx={node.x} cy={node.y} r={config.r + 4} fill="none"
                           stroke={node.decay > 70 ? "hsl(var(--success))" : node.decay > 40 ? "hsl(var(--warning))" : "hsl(var(--destructive))"}
                           strokeWidth={1.5}
                           strokeDasharray={`${(node.decay / 100) * (2 * Math.PI * (config.r + 4))} ${2 * Math.PI * (config.r + 4)}`}
-                          transform={`rotate(-90 ${node.x} ${node.y})`}
-                          opacity={0.6}
-                        />
+                          transform={`rotate(-90 ${node.x} ${node.y})`} opacity={0.6} />
                       )}
-                      <circle
-                        cx={node.x} cy={node.y} r={config.r}
-                        fill={config.fill}
+                      <circle cx={node.x} cy={node.y} r={config.r} fill={config.fill}
                         opacity={node.decay ? node.decay / 100 * 0.5 + 0.5 : 1}
-                        stroke={isActive ? "hsl(var(--ring))" : "none"}
-                        strokeWidth={2}
-                      />
-                      <text
-                        x={node.x} y={node.y + config.r + 14}
-                        textAnchor="middle"
-                        fill="hsl(var(--muted-foreground))"
-                        fontSize={9}
-                        fontFamily="Inter, sans-serif"
-                      >
+                        stroke={isActive ? "hsl(var(--ring))" : "none"} strokeWidth={2} />
+                      <text x={node.x} y={node.y + config.r + 14} textAnchor="middle"
+                        fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="Inter, sans-serif">
                         {node.label}
                       </text>
                     </motion.g>
@@ -148,7 +158,7 @@ export default function MemoryMap() {
         <div>
           <h2 className="text-sm font-semibold text-card-foreground mb-3">Node Details</h2>
           {selectedNode ? (
-            <NodeDetail node={selectedNode} />
+            <NodeDetail node={selectedNode} onEdit={handleEditNode} />
           ) : (
             <GlassPanel>
               <GlassPanelContent>
