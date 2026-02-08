@@ -1,5 +1,5 @@
-import Dashboard from "./Dashboard";
+import Onboarding from "./Onboarding";
 
-const Index = () => <Dashboard />;
+const Index = () => <Onboarding />;
 
 export default Index;

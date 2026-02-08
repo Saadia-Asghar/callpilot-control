@@ -1,6 +1,8 @@
 import {
   LayoutDashboard, Phone, CalendarDays, FileText, Settings, Brain, Headphones,
-  GitBranch, Zap, Hand, Mic, Play, Network, AlertOctagon, FlaskConical, Moon, Sun,
+  GitBranch, Zap, Hand, Mic, Play, Network, AlertOctagon, FlaskConical,
+  Home, ClipboardList, Code2, Building2, PhoneMissed, PlayCircle, Download,
+  MessageSquare, Sparkles, Moon, Sun,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -11,7 +13,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 
 const coreNav = [
-  { title: "Overview", url: "/", icon: LayoutDashboard },
+  { title: "Home", url: "/", icon: Home },
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Live Call", url: "/live-call", icon: Phone },
   { title: "Calendar", url: "/calendar", icon: CalendarDays },
   { title: "Call Logs", url: "/call-logs", icon: FileText },
@@ -28,9 +31,20 @@ const intelligenceNav = [
   { title: "Experiments", url: "/experiments", icon: FlaskConical },
 ];
 
+const operationsNav = [
+  { title: "Call Drafts", url: "/drafts", icon: ClipboardList },
+  { title: "Custom Scripts", url: "/scripts", icon: Code2 },
+  { title: "Industry Presets", url: "/presets", icon: Building2 },
+  { title: "Missed Recovery", url: "/recovery", icon: PhoneMissed },
+  { title: "Simulation", url: "/simulation", icon: PlayCircle },
+  { title: "AI Suggestions", url: "/ai-suggestions", icon: Sparkles },
+];
+
 const configNav = [
   { title: "Agent Settings", url: "/settings", icon: Settings },
   { title: "Preferences", url: "/preferences", icon: Brain },
+  { title: "Export & CRM", url: "/export", icon: Download },
+  { title: "Feedback", url: "/feedback", icon: MessageSquare },
 ];
 
 function NavGroup({ label, items }: { label: string; items: typeof coreNav }) {
@@ -72,7 +86,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-foreground">CallPilot</span>
-              <span className="text-[10px] text-muted-foreground">Agent Intelligence Console</span>
+              <span className="text-[10px] text-muted-foreground">AI Operations Console</span>
             </div>
           )}
         </div>
@@ -80,6 +94,7 @@ export function AppSidebar() {
       <SidebarContent>
         <NavGroup label="Core" items={coreNav} />
         <NavGroup label="Intelligence" items={intelligenceNav} />
+        <NavGroup label="Operations" items={operationsNav} />
         <NavGroup label="Config" items={configNav} />
       </SidebarContent>
       <SidebarFooter className="p-3">
