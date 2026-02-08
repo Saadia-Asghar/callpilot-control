@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { Mic, Play, Pause, Search, Upload, Volume2, Star, MoreVertical, CheckCircle2, Loader2, Music, Save } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Mic, MicOff, Play, Pause, Search, Upload, Volume2, Star, MoreVertical, CheckCircle2, Loader2, Music, Save, Square, RotateCcw, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,9 +68,103 @@ export default function VoiceCloneStudio() {
   const [cloneProgress, setCloneProgress] = useState<number | null>(null);
   const [cloneName, setCloneName] = useState("");
   const [showCloneFlow, setShowCloneFlow] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [cloneMode, setCloneMode] = useState<"upload" | "record">("upload");
+  const [recordingLevels, setRecordingLevels] = useState<number[]>(Array(24).fill(4));
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { saveVoice } = useVoiceProfiles();
+
+  const MAX_RECORD_SECS = 300; // 5 min
+  const MIN_RECORD_SECS = 30;
+
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    };
+  }, [recordedUrl]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        audioCtx.close();
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+        const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
+        setRecordedUrl(url);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      setRecordedBlob(null);
+      setRecordedUrl(null);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((t) => {
+          if (t + 1 >= MAX_RECORD_SECS) { stopRecording(); return t; }
+          return t + 1;
+        });
+      }, 1000);
+
+      const updateLevels = () => {
+        if (!analyserRef.current) return;
+        const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(data);
+        const bars = Array.from({ length: 24 }, (_, i) => {
+          const idx = Math.floor((i / 24) * data.length);
+          return Math.max(4, (data[idx] / 255) * 100);
+        });
+        setRecordingLevels(bars);
+        animFrameRef.current = requestAnimationFrame(updateLevels);
+      };
+      updateLevels();
+    } catch {
+      toast({ title: "Microphone access denied", variant: "destructive" });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null; }
+    setRecordingLevels(Array(24).fill(4));
+  };
+
+  const resetRecording = () => {
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    setRecordedBlob(null);
+    setRecordedUrl(null);
+    setRecordingTime(0);
+  };
+
+  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const handleSaveVoice = async (name: string, settings: { warmth: number; speed: number; energy: number; elevenlabs_voice_id: string }) => {
     await saveVoice.mutateAsync({
@@ -259,16 +353,110 @@ export default function VoiceCloneStudio() {
                 <GlassPanel>
                   <GlassPanelContent className="space-y-3">
                     <Input placeholder="Voice name..." value={cloneName} onChange={(e) => setCloneName(e.target.value)} className="h-8 text-xs" />
-                    <div className="rounded-lg border-2 border-dashed border-border p-6 text-center">
-                      <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-[10px] text-muted-foreground">Drag & drop audio samples</p>
-                      <p className="text-[9px] text-muted-foreground mt-1">WAV, MP3 · 30s–5min · Clear speech</p>
+
+                    {/* Mode Toggle */}
+                    <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-muted">
+                      <button
+                        onClick={() => setCloneMode("upload")}
+                        className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[10px] font-medium transition-all ${cloneMode === "upload" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        <Upload className="h-3 w-3" /> Upload File
+                      </button>
+                      <button
+                        onClick={() => setCloneMode("record")}
+                        className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[10px] font-medium transition-all ${cloneMode === "record" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        <Mic className="h-3 w-3" /> Record Live
+                      </button>
                     </div>
+
+                    {/* Upload Mode */}
+                    {cloneMode === "upload" && (
+                      <div className="rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary/40 transition-colors cursor-pointer">
+                        <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-[10px] text-muted-foreground">Drag & drop audio samples</p>
+                        <p className="text-[9px] text-muted-foreground mt-1">WAV, MP3 · 30s–5min · Clear speech</p>
+                      </div>
+                    )}
+
+                    {/* Record Mode */}
+                    {cloneMode === "record" && (
+                      <div className="space-y-3">
+                        {/* Waveform Visualizer */}
+                        <div className="rounded-lg bg-muted/50 p-3">
+                          <div className="flex items-end justify-center gap-[3px] h-16">
+                            {recordingLevels.map((level, i) => (
+                              <motion.div
+                                key={i}
+                                className={`w-1.5 rounded-full ${isRecording ? "bg-destructive" : recordedBlob ? "bg-primary" : "bg-muted-foreground/30"}`}
+                                animate={{ height: `${level}%` }}
+                                transition={{ duration: 0.08 }}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className={`text-xs font-mono ${isRecording ? "text-destructive" : "text-muted-foreground"}`}>
+                              {formatTime(recordingTime)}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground">
+                              {isRecording ? `Max ${formatTime(MAX_RECORD_SECS)}` : recordedBlob ? "Ready" : `Min ${formatTime(MIN_RECORD_SECS)}`}
+                            </span>
+                          </div>
+                          {isRecording && (
+                            <Progress value={(recordingTime / MAX_RECORD_SECS) * 100} className="h-1 mt-1.5" />
+                          )}
+                        </div>
+
+                        {/* Recording Controls */}
+                        <div className="flex items-center justify-center gap-3">
+                          {!isRecording && !recordedBlob && (
+                            <Button size="sm" onClick={startRecording} className="gap-1.5 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              <Mic className="h-3.5 w-3.5" /> Start Recording
+                            </Button>
+                          )}
+                          {isRecording && (
+                            <Button size="sm" onClick={stopRecording} variant="outline" className="gap-1.5 text-xs border-destructive text-destructive hover:bg-destructive/10">
+                              <Square className="h-3 w-3 fill-current" /> Stop
+                            </Button>
+                          )}
+                          {recordedBlob && !isRecording && (
+                            <>
+                              <Button size="sm" variant="outline" onClick={resetRecording} className="gap-1.5 text-xs">
+                                <RotateCcw className="h-3 w-3" /> Re-record
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                if (recordedUrl) { const a = new Audio(recordedUrl); a.play(); }
+                              }} className="gap-1.5 text-xs">
+                                <Play className="h-3 w-3" /> Play
+                              </Button>
+                              {recordedUrl && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <a href={recordedUrl} download={`${cloneName || "recording"}.webm`}>
+                                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                        <Download className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </a>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="text-[10px]">Download recording</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {recordedBlob && recordingTime < MIN_RECORD_SECS && (
+                          <p className="text-[10px] text-destructive text-center">Recording too short — need at least {MIN_RECORD_SECS}s of clear speech.</p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="text-[10px] text-muted-foreground space-y-1">
                       <p>✓ Use high-quality microphone</p>
                       <p>✓ Minimize background noise</p>
                       <p>✓ Read diverse content naturally</p>
                     </div>
+
                     {cloneProgress !== null ? (
                       <div className="space-y-2">
                         <Progress value={cloneProgress} className="h-2" />
@@ -277,7 +465,11 @@ export default function VoiceCloneStudio() {
                         </p>
                       </div>
                     ) : (
-                      <Button onClick={handleCloneStart} className="w-full text-xs gradient-primary text-primary-foreground border-0" disabled={!cloneName.trim()}>
+                      <Button
+                        onClick={handleCloneStart}
+                        className="w-full text-xs gradient-primary text-primary-foreground border-0"
+                        disabled={!cloneName.trim() || (cloneMode === "record" && (!recordedBlob || recordingTime < MIN_RECORD_SECS))}
+                      >
                         Clone Voice
                       </Button>
                     )}
