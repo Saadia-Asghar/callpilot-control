@@ -1,5 +1,5 @@
-import Onboarding from "./Onboarding";
+import Landing from "./Landing";
 
-const Index = () => <Onboarding />;
+const Index = () => <Landing />;
 
 export default Index;

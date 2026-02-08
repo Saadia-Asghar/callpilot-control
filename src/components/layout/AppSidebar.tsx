@@ -13,7 +13,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 
 const coreNav = [
-  { title: "Home", url: "/", icon: Home },
+  { title: "Home", url: "/home", icon: Home },
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Live Call", url: "/live-call", icon: Phone },
   { title: "Calendar", url: "/calendar", icon: CalendarDays },
@@ -56,7 +56,7 @@ function NavGroup({ label, items }: { label: string; items: typeof coreNav }) {
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
-                <NavLink to={item.url} end={item.url === "/"}
+                <NavLink to={item.url} end={item.url === "/home"}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   activeClassName="bg-accent text-accent-foreground font-medium">
                   <item.icon className="h-4 w-4 shrink-0" />
