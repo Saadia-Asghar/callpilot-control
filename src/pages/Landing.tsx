@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import {
   Headphones, Phone, Mic, FileText, PhoneMissed, Sparkles,
   CalendarCheck, ArrowRight, Zap, Shield, Clock, FlaskConical,
-  Volume2, Brain, BarChart3,
+  Volume2, Brain, BarChart3, Building2, Scissors, GraduationCap,
+  Briefcase, Users, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,48 +15,36 @@ import { DemoVoiceClone } from "@/components/demo/DemoVoiceClone";
 import { DemoScheduler } from "@/components/demo/DemoScheduler";
 import { DemoDraftEditor } from "@/components/demo/DemoDraftEditor";
 
+const DEMO_LIMIT = 3;
+
 const features = [
   {
     icon: CalendarCheck,
     title: "Smart Scheduling",
-    why: "Stop wasting hours on back-and-forth calls.",
-    description: "AI suggests the best time slots based on preferences, conflict analysis, and historical patterns — saving operators 3+ hours daily.",
+    why: "AI finds the best time slots for clients & operators, saving you hours of manual planning.",
+    description: "Analyzes preferences, detects conflicts, and ranks time slots — operators save 3+ hours daily on booking logistics.",
     color: "from-primary to-info",
   },
   {
     icon: Mic,
-    title: "Voice Cloning",
-    why: "Your brand voice, on every call.",
-    description: "Clone any voice with ElevenLabs or pick from professional personas. Adjust warmth, speed, and energy for the perfect caller experience.",
+    title: "Voice Clone Studio",
+    why: "Clone your voice instantly for calls or messages, set tone, speed, and energy. It makes communication effortless and professional.",
+    description: "Pick from professional personas or create your own. Adjust warmth, speed, and expressiveness for the perfect caller experience.",
     color: "from-chart-3 to-chart-1",
   },
   {
     icon: FileText,
-    title: "Call Drafts & Scripts",
-    why: "Never miss critical intake details.",
-    description: "Structured intake forms auto-generated from conversations. Create, reorder, and test scripts before going live.",
+    title: "Draft Calls & Scripts",
+    why: "Create, edit, and save structured call scripts in seconds. AI guides you for perfect flow.",
+    description: "Structured intake forms auto-generated from conversations. Reorder, test, and export scripts before going live.",
     color: "from-chart-2 to-primary",
   },
   {
     icon: PhoneMissed,
     title: "Recovery & No-Show Prevention",
-    why: "Every missed call is lost revenue.",
-    description: "Automatically detect missed calls and trigger smart callbacks — recovering 94% of no-shows without manual effort.",
+    why: "AI automatically follows up on missed calls, reducing stress and missed opportunities.",
+    description: "Detect missed calls and trigger smart callbacks — recovering 94% of no-shows without manual effort.",
     color: "from-destructive to-chart-3",
-  },
-  {
-    icon: FlaskConical,
-    title: "Simulation & AI Suggestions",
-    why: "Test before you deploy.",
-    description: "Run batch simulations to validate agent behavior. AI suggests optimal scripts, time slots, and persona adjustments.",
-    color: "from-chart-4 to-primary",
-  },
-  {
-    icon: Shield,
-    title: "Trust & Safety",
-    why: "Stay in control, always.",
-    description: "Real-time confidence scoring, human override controls, and full audit trails. Pause, correct, or escalate any call instantly.",
-    color: "from-chart-2 to-chart-4",
   },
 ];
 
@@ -66,14 +55,25 @@ const stats = [
   { label: "Uptime", value: "99.9%", icon: Zap },
 ];
 
-const DEMO_LIMIT = 3;
+const audiences = [
+  { icon: Building2, label: "Clinics & Healthcare", desc: "Automate patient booking, reminders, and no-show recovery" },
+  { icon: Scissors, label: "Salons & Spas", desc: "Fill appointment gaps with AI-optimized scheduling" },
+  { icon: GraduationCap, label: "Tutors & Universities", desc: "Coordinate sessions, office hours, and group bookings" },
+  { icon: Briefcase, label: "Agencies & Teams", desc: "Manage multi-operator call flows and intake scripts" },
+  { icon: Users, label: "Busy Operators", desc: "Save hours daily on manual scheduling and follow-ups" },
+  { icon: Mic, label: "Voice-Forward Brands", desc: "Professional AI voice cloning for engaging calls" },
+];
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [demoUses, setDemoUses] = useState(0);
-  const remaining = Math.max(0, DEMO_LIMIT - demoUses);
+  const [voiceUses, setVoiceUses] = useState(0);
+  const [scheduleUses, setScheduleUses] = useState(0);
+  const [draftUses, setDraftUses] = useState(0);
 
-  const handleDemoUsed = () => setDemoUses((p) => p + 1);
+  const voiceRemaining = Math.max(0, DEMO_LIMIT - voiceUses);
+  const scheduleRemaining = Math.max(0, DEMO_LIMIT - scheduleUses);
+  const draftRemaining = Math.max(0, DEMO_LIMIT - draftUses);
+  const totalRemaining = voiceRemaining + scheduleRemaining + draftRemaining;
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,21 +105,20 @@ export default function Landing() {
         <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-10 text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <Badge variant="outline" className="mb-5 text-xs px-3 py-1 border-primary/30 text-primary">
-              <Sparkles className="h-3 w-3 mr-1" /> Try it live — no signup needed
+              <Sparkles className="h-3 w-3 mr-1" /> 3 free tries per feature — no signup needed
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
-              Autonomous Voice
+              Autonomous AI Scheduling
               <br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-info">
-                Scheduling — Try It Live!
+                & Voice Cloning — Try It Live!
               </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto">
-              CallPilot automates calls, recovers no-shows, and optimizes schedules in real-time.
-              Test it instantly — no signup required!
+              CallPilot automates calls, recovers no-shows, optimizes schedules, and lets you clone your own voice — all in real-time. Experience 3 free demo interactions per feature before signing up!
             </p>
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button size="lg" variant="outline" className="gap-2" onClick={() => navigate("/auth")}>
+              <Button size="lg" className="gradient-primary text-primary-foreground border-0 gap-2" onClick={() => navigate("/auth")}>
                 Sign Up for Full Access <ArrowRight className="h-4 w-4" />
               </Button>
               <Tooltip>
@@ -128,7 +127,7 @@ export default function Landing() {
                     <BarChart3 className="h-3 w-3" /> or scroll down to try the demo ↓
                   </a>
                 </TooltipTrigger>
-                <TooltipContent>3 free interactions — voice clone, scheduling, draft editing</TooltipContent>
+                <TooltipContent>3 free tries per feature — voice clone, scheduling, draft editing</TooltipContent>
               </Tooltip>
             </div>
           </motion.div>
@@ -159,11 +158,11 @@ export default function Landing() {
       <section id="demo" className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-10">
           <Badge variant="outline" className="mb-3 text-[10px] px-2 py-0.5 border-chart-3/30 text-chart-3">
-            <Zap className="h-3 w-3 mr-1" /> Live Demo · {remaining} interactions remaining
+            <Zap className="h-3 w-3 mr-1" /> Live Demo · {totalRemaining} total interactions remaining
           </Badge>
           <h2 className="text-3xl font-bold text-foreground">Try CallPilot Right Now</h2>
           <p className="mt-2 text-muted-foreground max-w-lg mx-auto">
-            Clone a voice, schedule a call, or edit a draft — all real-time, no signup required.
+            Clone a voice, schedule a call, or edit a draft — 3 tries each, no signup required.
           </p>
         </div>
 
@@ -172,24 +171,27 @@ export default function Landing() {
             <TabsList className="w-full grid grid-cols-3 mb-6">
               <TabsTrigger value="voice" className="gap-1.5 text-xs">
                 <Volume2 className="h-3.5 w-3.5" /> Voice Clone
+                {voiceRemaining > 0 && <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">{voiceRemaining}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="schedule" className="gap-1.5 text-xs">
                 <CalendarCheck className="h-3.5 w-3.5" /> AI Schedule
+                {scheduleRemaining > 0 && <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">{scheduleRemaining}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="draft" className="gap-1.5 text-xs">
                 <FileText className="h-3.5 w-3.5" /> Draft Editor
+                {draftRemaining > 0 && <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">{draftRemaining}</Badge>}
               </TabsTrigger>
             </TabsList>
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
               <TabsContent value="voice" className="mt-0">
-                <DemoVoiceClone onDemoUsed={handleDemoUsed} remaining={remaining} />
+                <DemoVoiceClone onDemoUsed={() => setVoiceUses(p => p + 1)} remaining={voiceRemaining} />
               </TabsContent>
               <TabsContent value="schedule" className="mt-0">
-                <DemoScheduler onDemoUsed={handleDemoUsed} remaining={remaining} />
+                <DemoScheduler onDemoUsed={() => setScheduleUses(p => p + 1)} remaining={scheduleRemaining} />
               </TabsContent>
               <TabsContent value="draft" className="mt-0">
-                <DemoDraftEditor onDemoUsed={handleDemoUsed} remaining={remaining} />
+                <DemoDraftEditor onDemoUsed={() => setDraftUses(p => p + 1)} remaining={draftRemaining} />
               </TabsContent>
             </div>
           </Tabs>
@@ -197,7 +199,7 @@ export default function Landing() {
           {/* Guided tooltip */}
           <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground">
             <Brain className="h-3 w-3" />
-            Try: clone a voice → schedule a call → preview a script draft
+            Try: schedule a call → preview AI draft → clone your voice → export recording
           </div>
         </div>
       </section>
@@ -206,9 +208,9 @@ export default function Landing() {
       <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border/50">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-foreground">Why Each Feature Matters</h2>
-          <p className="mt-3 text-muted-foreground">Built to solve real operator pain points</p>
+          <p className="mt-3 text-muted-foreground">See how AI saves your time, reduces no-shows, and gives a professional touch.</p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-2 gap-5">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
@@ -221,9 +223,37 @@ export default function Landing() {
               <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${f.color} mb-4 group-hover:scale-110 transition-transform`}>
                 <f.icon className="h-5 w-5 text-primary-foreground" />
               </div>
-              <h3 className="text-sm font-semibold text-card-foreground mb-0.5">{f.title}</h3>
+              <h3 className="text-sm font-semibold text-card-foreground mb-1">{f.title}</h3>
               <p className="text-xs font-medium text-primary mb-2">{f.why}</p>
               <p className="text-xs text-muted-foreground leading-relaxed">{f.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Who Can Use It */}
+      <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border/50">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-foreground">Built for Professionals Who Schedule</h2>
+          <p className="mt-3 text-muted-foreground">From clinics to agencies — anyone who needs smarter calls benefits.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {audiences.map((a, i) => (
+            <motion.div
+              key={a.label}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.06 }}
+              className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary/20 transition-colors"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <a.icon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-card-foreground">{a.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{a.desc}</p>
+              </div>
             </motion.div>
           ))}
         </div>

@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Mic, Play, Pause, Volume2, Loader2 } from "lucide-react";
+import { Mic, Pause, Volume2, Loader2, Download, ArrowRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const VOICES = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", tag: "Warm" },
@@ -14,27 +15,28 @@ const VOICES = [
   { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", tag: "Academic" },
 ];
 
+const TEXT_LIMIT = 100;
+
 interface Props {
   onDemoUsed: () => void;
   remaining: number;
 }
 
 export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
-  const [text, setText] = useState("Hi! I'd be happy to help you schedule an appointment. What day works best for you?");
+  const [text, setText] = useState("Hi! I'd love to help schedule your appointment. What day works best?");
   const [selectedVoice, setSelectedVoice] = useState(VOICES[0]);
   const [speed, setSpeed] = useState([50]);
   const [warmth, setWarmth] = useState([70]);
   const [energy, setEnergy] = useState([40]);
   const [generating, setGenerating] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [lastBlobUrl, setLastBlobUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handlePreview = useCallback(async () => {
-    if (remaining <= 0) {
-      toast({ title: "Demo limit reached", description: "Sign up for unlimited access!", variant: "destructive" });
-      return;
-    }
+    if (remaining <= 0) return;
     if (!text.trim()) return;
 
     setGenerating(true);
@@ -48,7 +50,7 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ text, voiceId: selectedVoice.id }),
+          body: JSON.stringify({ text: text.slice(0, TEXT_LIMIT), voiceId: selectedVoice.id }),
         }
       );
       if (!response.ok) throw new Error("TTS failed");
@@ -56,8 +58,9 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
       const url = URL.createObjectURL(blob);
       if (audioRef.current) {
         audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
       }
+      setLastBlobUrl(url);
       const audio = new Audio(url);
       audioRef.current = audio;
       audio.onplay = () => setPlaying(true);
@@ -70,11 +73,41 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
     } finally {
       setGenerating(false);
     }
-  }, [text, selectedVoice, remaining, onDemoUsed, toast]);
+  }, [text, selectedVoice, remaining, onDemoUsed, toast, lastBlobUrl]);
 
-  const stopPlayback = () => {
-    audioRef.current?.pause();
+  const stopPlayback = () => audioRef.current?.pause();
+
+  const downloadRecording = () => {
+    if (!lastBlobUrl) return;
+    const a = document.createElement("a");
+    a.href = lastBlobUrl;
+    a.download = `callpilot-voice-demo-${selectedVoice.name.toLowerCase()}.mp3`;
+    a.click();
+    toast({ title: "Downloaded!", description: "Voice recording saved." });
   };
+
+  // Exhausted state
+  if (remaining <= 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+          <Lock className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-card-foreground">Voice Clone Demo Complete</p>
+          <p className="text-xs text-muted-foreground mt-1">You've used all 3 free voice previews.</p>
+        </div>
+        <Button className="gap-2 gradient-primary text-primary-foreground border-0" onClick={() => navigate("/auth")}>
+          Sign Up for Unlimited Access <ArrowRight className="h-4 w-4" />
+        </Button>
+        {lastBlobUrl && (
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={downloadRecording}>
+            <Download className="h-3 w-3" /> Download Last Recording
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -102,14 +135,19 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
         ))}
       </div>
 
-      {/* Text input */}
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Type what your AI agent should say..."
-        className="text-xs min-h-[60px] resize-none"
-        maxLength={200}
-      />
+      {/* Text input with character counter */}
+      <div className="relative">
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value.slice(0, TEXT_LIMIT))}
+          placeholder="Type what your AI agent should say..."
+          className="text-xs min-h-[60px] resize-none pr-14"
+          maxLength={TEXT_LIMIT}
+        />
+        <span className={`absolute bottom-2 right-3 text-[10px] ${text.length >= TEXT_LIMIT ? "text-destructive" : "text-muted-foreground"}`}>
+          {text.length}/{TEXT_LIMIT}
+        </span>
+      </div>
 
       {/* Sliders */}
       <div className="grid grid-cols-3 gap-3">
@@ -144,18 +182,14 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
         ))}
       </div>
 
-      {/* Play button */}
+      {/* Actions */}
       <div className="flex gap-2">
         <Button
           className="flex-1 gap-2 gradient-primary text-primary-foreground border-0"
           onClick={handlePreview}
-          disabled={generating || !text.trim() || remaining <= 0}
+          disabled={generating || !text.trim()}
         >
-          {generating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Volume2 className="h-4 w-4" />
-          )}
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
           {generating ? "Generating..." : "Preview Voice"}
         </Button>
         {playing && (
@@ -163,7 +197,16 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
             <Pause className="h-4 w-4" />
           </Button>
         )}
+        {lastBlobUrl && !playing && (
+          <Button variant="outline" size="icon" onClick={downloadRecording} title="Download recording">
+            <Download className="h-4 w-4" />
+          </Button>
+        )}
       </div>
+
+      <p className="text-[10px] text-muted-foreground text-center">
+        Demo limited to {TEXT_LIMIT} characters · Download your recording after preview
+      </p>
     </div>
   );
 }
