@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useVoiceProfiles } from "@/hooks/useVoiceProfiles";
 import { SaveVoiceDialog } from "@/components/voice/SaveVoiceDialog";
 import api from "@/lib/api";
+import { generateTTS } from "@/lib/tts";
 
 interface VoiceProfile {
   id: string;
@@ -212,113 +213,43 @@ export default function VoiceCloneStudio() {
     }
     setGeneratingTTS(true);
     try {
-      // Use backend API for TTS generation
-      const response = await api.previewVoice({
-        voice_id: selectedVoice.elevenlabs_voice_id,
-        sample_text: sampleScript,
-        tone: sliders.warmth,
-        speed: sliders.speed,
-        energy: sliders.energy,
-      }) as any;
-      
-      // Backend returns preview_audio_base64
-      if (response.preview_audio_base64) {
-        // Convert base64 to blob
-        const byteCharacters = atob(response.preview_audio_base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        if (audioRef.current) { audioRef.current.pause(); URL.revokeObjectURL(audioRef.current.src); }
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-      } else if (response.preview_url) {
-        // Fallback: fetch from URL
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        const audioResponse = await fetch(`${apiUrl}${response.preview_url}`);
-        if (!audioResponse.ok) throw new Error("Failed to fetch audio");
-        const audioBlob = await audioResponse.blob();
-        const url = URL.createObjectURL(audioBlob);
-        if (audioRef.current) { audioRef.current.pause(); }
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-      } else {
-        throw new Error("No audio data received");
-      }
+      const audioBlob = await generateTTS(sampleScript, selectedVoice.elevenlabs_voice_id);
+      const url = URL.createObjectURL(audioBlob);
+      if (audioRef.current) { audioRef.current.pause(); URL.revokeObjectURL(audioRef.current.src); }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
     } catch (err: any) {
       console.error(err);
       toast({ title: "Preview failed", description: err.message || "Could not generate voice preview.", variant: "destructive" });
     } finally {
       setGeneratingTTS(false);
     }
-  }, [selectedVoice, sampleScript, sliders, toast]);
+  }, [selectedVoice, sampleScript, toast]);
 
   const handleTestCall = useCallback(async () => {
     if (!selectedVoice.elevenlabs_voice_id || !testText.trim()) return;
     setGeneratingTTS(true);
     try {
-      // Use backend API for TTS generation
-      const response = await api.previewVoice({
-        voice_id: selectedVoice.elevenlabs_voice_id,
-        sample_text: testText,
-        tone: sliders.warmth,
-        speed: sliders.speed,
-        energy: sliders.energy,
-      }) as any;
-      
-      // Backend returns preview_audio_base64
-      if (response.preview_audio_base64) {
-        // Convert base64 to blob
-        const byteCharacters = atob(response.preview_audio_base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        if (audioRef.current) { audioRef.current.pause(); }
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-      } else if (response.preview_url) {
-        // Fallback: fetch from URL
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        const audioResponse = await fetch(`${apiUrl}${response.preview_url}`);
-        if (!audioResponse.ok) throw new Error("Failed to fetch audio");
-        const audioBlob = await audioResponse.blob();
-        const url = URL.createObjectURL(audioBlob);
-        if (audioRef.current) { audioRef.current.pause(); }
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-      } else {
-        throw new Error("No audio data received");
-      }
+      const audioBlob = await generateTTS(testText, selectedVoice.elevenlabs_voice_id);
+      const url = URL.createObjectURL(audioBlob);
+      if (audioRef.current) { audioRef.current.pause(); }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
     } catch (error: any) {
       console.error(error);
       toast({ title: "Test failed", description: error.message || "Could not generate test audio.", variant: "destructive" });
     } finally {
       setGeneratingTTS(false);
     }
-  }, [selectedVoice, testText, sliders, toast]);
+  }, [selectedVoice, testText, toast]);
 
   const handleCloneStart = () => {
     if (!cloneName.trim()) { toast({ title: "Enter a name", variant: "destructive" }); return; }

@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import { generateTTS } from "@/lib/tts";
 
 const VOICES = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", tag: "Warm" },
@@ -137,39 +138,26 @@ export function DemoVoiceClone({ onDemoUsed, remaining, sessionId }: Props) {
         return;
       }
 
-      // Call backend API for voice preview
-      const previewData: any = await api.previewVoice({
-        voice_id: selectedVoice.id,
-        sample_text: text.slice(0, TEXT_LIMIT),
-        tone: warmth[0],
-        speed: speed[0],
-        energy: energy[0],
-      }, sessionId ?? undefined);
-
-      if (previewData?.success && previewData?.preview_audio_base64) {
-        const audioBytes = Uint8Array.from(atob(previewData.preview_audio_base64), c => c.charCodeAt(0));
-        const blob = new Blob([audioBytes], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        
-        if (audioRef.current) {
-          audioRef.current.pause();
-          if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
-        }
-        setLastBlobUrl(url);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onplay = () => setPlaying(true);
-        audio.onended = () => setPlaying(false);
-        audio.onpause = () => setPlaying(false);
-        await audio.play();
-        await onDemoUsed();
-        toast({ 
-          title: "Voice Preview Generated", 
-          description: `${previewData.demo_tries_remaining ?? remaining - 1} demo tries remaining` 
-        });
-      } else {
-        throw new Error(previewData?.error || "Voice preview failed");
+      // Use ElevenLabs edge function for voice preview
+      const audioBlob = await generateTTS(text.slice(0, TEXT_LIMIT), selectedVoice.id);
+      const url = URL.createObjectURL(audioBlob);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
       }
+      setLastBlobUrl(url);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
+      await onDemoUsed();
+      toast({ 
+        title: "Voice Preview Generated", 
+        description: `${remaining - 1} demo tries remaining` 
+      });
     } catch {
       toast({ title: "Preview failed", description: "Could not generate voice preview.", variant: "destructive" });
     } finally {

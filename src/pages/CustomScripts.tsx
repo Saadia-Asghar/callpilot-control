@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { useVoiceProfiles, type VoiceProfile } from "@/hooks/useVoiceProfiles";
 import { VoiceSelector } from "@/components/voice/VoiceSelector";
 import api from "@/lib/api";
+import { generateTTS } from "@/lib/tts";
 
 interface Script {
   id: string;
@@ -97,28 +98,7 @@ export default function CustomScripts() {
     if (!selectedVoice?.elevenlabs_voice_id || !ttsText.trim()) return;
     setGenerating(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            text: ttsText,
-            voiceId: selectedVoice.elevenlabs_voice_id,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || `TTS request failed: ${response.status}`);
-      }
-
-      const audioBlob = await response.blob();
+      const audioBlob = await generateTTS(ttsText, selectedVoice.elevenlabs_voice_id);
       const url = URL.createObjectURL(audioBlob);
       if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
       setLastBlobUrl(url);
