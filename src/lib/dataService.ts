@@ -8,7 +8,7 @@ import api from "@/lib/api";
 export async function fetchCallLogs() {
   try {
     const data = await api.listCallsByOperator(100, 0, true);
-    const list = Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []);
+    const list = Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []);
     return list.map((c: any) => ({
       id: c.id ?? c.call_log_id,
       caller_name: c.caller_name ?? c.caller ?? "Caller",

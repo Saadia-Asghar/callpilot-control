@@ -28,7 +28,7 @@ interface Props {
   sessionId?: string;
 }
 
-export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
+export function DemoVoiceClone({ onDemoUsed, remaining, sessionId }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [text, setText] = useState("Hi! I'd love to help schedule your appointment.");
   const [selectedVoice, setSelectedVoice] = useState(VOICES[0]);
@@ -138,16 +138,15 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
       }
 
       // Call backend API for voice preview
-      const previewData = await api.previewVoice({
+      const previewData: any = await api.previewVoice({
         voice_id: selectedVoice.id,
         sample_text: text.slice(0, TEXT_LIMIT),
         tone: warmth[0],
         speed: speed[0],
         energy: energy[0],
-      }, sessionId);
+      }, sessionId ?? undefined);
 
-      if (previewData.success && previewData.preview_audio_base64) {
-        // Convert base64 to blob
+      if (previewData?.success && previewData?.preview_audio_base64) {
         const audioBytes = Uint8Array.from(atob(previewData.preview_audio_base64), c => c.charCodeAt(0));
         const blob = new Blob([audioBytes], { type: 'audio/mpeg' });
         const url = URL.createObjectURL(blob);
@@ -166,10 +165,10 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
         await onDemoUsed();
         toast({ 
           title: "Voice Preview Generated", 
-          description: `${previewData.demo_tries_remaining || remaining - 1} demo tries remaining` 
+          description: `${previewData.demo_tries_remaining ?? remaining - 1} demo tries remaining` 
         });
       } else {
-        throw new Error(previewData.error || "Voice preview failed");
+        throw new Error(previewData?.error || "Voice preview failed");
       }
     } catch {
       toast({ title: "Preview failed", description: "Could not generate voice preview.", variant: "destructive" });

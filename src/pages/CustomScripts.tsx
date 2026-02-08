@@ -52,20 +52,19 @@ export default function CustomScripts() {
   useEffect(() => {
     const fetchScripts = async () => {
       try {
-        const data = await api.loadCustomScript();
-        if (data.scripts) {
+        const data: any = await api.loadCustomScript();
+        if (data?.scripts) {
           setScripts(data.scripts.map((s: any) => ({
-            id: s.script_id.toString(),
+            id: String(s.script_id),
             name: s.name,
             operator: 'Current',
             type: 'custom' as const,
             content: JSON.stringify(s.script_flow || {}),
             lastEdited: 'Recently'
           })));
-        } else if (data.script_flow) {
-          // Single active script
+        } else if (data?.script_flow) {
           setScripts([{
-            id: data.script_id.toString(),
+            id: String(data.script_id),
             name: data.name,
             operator: 'Current',
             type: 'custom' as const,
