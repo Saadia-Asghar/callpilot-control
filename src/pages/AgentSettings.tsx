@@ -1,20 +1,70 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { agentSettings } from "@/data/mockData";
+import { fetchAgentSettings, upsertAgentSettings } from "@/lib/dataService";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AgentSettings() {
   const { toast } = useToast();
-  const [settings, setSettings] = useState(agentSettings);
 
-  const handleSave = () => {
-    toast({ title: "Settings saved", description: "Your agent configuration has been updated." });
-  };
+  const { data: dbSettings, isLoading } = useQuery({
+    queryKey: ["agent_settings"],
+    queryFn: fetchAgentSettings,
+  });
+
+  const [settings, setSettings] = useState({
+    businessHours: { start: "09:00", end: "17:00" },
+    slotDuration: 30,
+    bufferTime: 15,
+    voicePersona: "Professional & Friendly",
+    autoConfirm: true,
+    timezone: "America/Los_Angeles",
+  });
+
+  // Sync from DB when loaded
+  const [synced, setSynced] = useState(false);
+  if (dbSettings && !synced) {
+    setSettings({
+      businessHours: { start: dbSettings.business_hours_start, end: dbSettings.business_hours_end },
+      slotDuration: dbSettings.slot_duration,
+      bufferTime: dbSettings.buffer_time,
+      voicePersona: dbSettings.voice_persona,
+      autoConfirm: dbSettings.auto_confirm,
+      timezone: dbSettings.timezone,
+    });
+    setSynced(true);
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: () => upsertAgentSettings({
+      business_hours_start: settings.businessHours.start,
+      business_hours_end: settings.businessHours.end,
+      slot_duration: settings.slotDuration,
+      buffer_time: settings.bufferTime,
+      voice_persona: settings.voicePersona,
+      auto_confirm: settings.autoConfirm,
+      timezone: settings.timezone,
+    }),
+    onSuccess: () => toast({ title: "Settings saved", description: "Your agent configuration has been updated." }),
+    onError: () => toast({ title: "Error", description: "Failed to save settings.", variant: "destructive" }),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-slide-in">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -23,13 +73,12 @@ export default function AgentSettings() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Agent Settings</h1>
           <p className="text-sm text-muted-foreground">Configure your AI scheduling agent</p>
         </div>
-        <Button onClick={handleSave} className="gap-2 gradient-primary text-primary-foreground border-0 hover:opacity-90">
-          <Save className="h-4 w-4" /> Save Changes
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="gap-2 gradient-primary text-primary-foreground border-0 hover:opacity-90">
+          <Save className="h-4 w-4" /> {saveMutation.isPending ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Business Hours */}
         <div className="rounded-xl border border-border bg-card p-5 shadow-card space-y-4">
           <h3 className="text-sm font-semibold text-card-foreground">Business Hours</h3>
           <div className="grid grid-cols-2 gap-4">
@@ -56,7 +105,6 @@ export default function AgentSettings() {
           </div>
         </div>
 
-        {/* Scheduling */}
         <div className="rounded-xl border border-border bg-card p-5 shadow-card space-y-4">
           <h3 className="text-sm font-semibold text-card-foreground">Scheduling</h3>
           <div className="space-y-2">
@@ -86,7 +134,6 @@ export default function AgentSettings() {
           </div>
         </div>
 
-        {/* Voice */}
         <div className="rounded-xl border border-border bg-card p-5 shadow-card space-y-4">
           <h3 className="text-sm font-semibold text-card-foreground">Voice Persona</h3>
           <Select value={settings.voicePersona} onValueChange={(v) => setSettings({ ...settings, voicePersona: v })}>
@@ -100,13 +147,12 @@ export default function AgentSettings() {
           </Select>
         </div>
 
-        {/* Auto-confirm */}
         <div className="rounded-xl border border-border bg-card p-5 shadow-card space-y-4">
           <h3 className="text-sm font-semibold text-card-foreground">Automation</h3>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-card-foreground">Auto-confirm bookings</p>
-              <p className="text-xs text-muted-foreground">Automatically confirm appointments without manual review</p>
+              <p className="text-xs text-muted-foreground">Automatically confirm without manual review</p>
             </div>
             <Switch checked={settings.autoConfirm} onCheckedChange={(v) => setSettings({ ...settings, autoConfirm: v })} />
           </div>
