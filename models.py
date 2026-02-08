@@ -106,6 +106,10 @@ class Operator(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
+    # Password reset fields
+    reset_password_token = Column(String, nullable=True)   # Hashed token stored
+    reset_password_expires_at = Column(DateTime(timezone=True), nullable=True)
+    
     # Relationships
     call_logs = relationship("CallLog", back_populates="operator")
     custom_scripts = relationship("CustomScript", back_populates="operator")

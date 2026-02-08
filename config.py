@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str = ""
     whisper_api_key: str = ""
     
+    # Hackathon Mode (mocks email, prints reset link to console)
+    hackathon_mode: bool = True
+    
+    # Frontend URL for password reset links
+    frontend_url: str = "http://localhost:8080"
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

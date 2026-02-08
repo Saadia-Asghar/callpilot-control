@@ -359,6 +359,27 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // Password Reset
+  async forgotPassword(email: string) {
+    return this.request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async verifyResetToken(token: string) {
+    return this.request<{ valid: boolean; error_code?: string; message?: string }>(
+      `/auth/reset-password/verify?token=${encodeURIComponent(token)}`
+    );
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+  }
 }
 
 // Export singleton instance

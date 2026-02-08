@@ -1,7 +1,7 @@
 """
 Main FastAPI application for CallPilot.
 """
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -23,7 +23,11 @@ from calendar_integration import calendar_service
 from voice_service import voice_service
 from auth import (
     get_current_operator, get_optional_operator, create_access_token,
-    get_password_hash, verify_password, OperatorCreate, OperatorLogin, Token
+    get_password_hash, verify_password, OperatorCreate, OperatorLogin, Token,
+    ForgotPasswordRequest, ResetPasswordRequest,
+    generate_reset_token, hash_token, validate_password_strength,
+    send_reset_email, check_rate_limit, get_client_ip,
+    RESET_TOKEN_EXPIRE_MINUTES
 )
 from industry_presets import industry_preset_service
 from recovery_agent import recovery_agent
@@ -1232,6 +1236,120 @@ async def get_current_operator_info(
         "voice_persona_id": operator.voice_persona_id,
         "is_active": operator.is_active
     }
+
+
+# ── Forgot Password ─────────────────────────────────────────────────────────
+
+@app.post("/auth/forgot-password")
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Request a password reset link.
+    Always returns success to avoid revealing whether the email exists.
+    Rate limited to 5 requests per hour per IP.
+    """
+    client_ip = get_client_ip(request)
+    if not check_rate_limit(f"forgot_pw:{client_ip}"):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many reset requests. Please try again later."
+        )
+
+    safe_response = {"message": "If an account exists with that email, a reset link has been sent."}
+
+    operator = db.query(Operator).filter(Operator.email == data.email).first()
+    if not operator:
+        logger.info(f"Password reset requested for non-existent email: {data.email}")
+        return safe_response
+
+    # Generate token
+    raw_token = generate_reset_token()
+    hashed = hash_token(raw_token)
+
+    # Store hashed token and expiry
+    operator.reset_password_token = hashed
+    operator.reset_password_expires_at = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    db.commit()
+
+    # Build reset link
+    frontend_url = settings.frontend_url.rstrip("/")
+    reset_link = f"{frontend_url}/reset-password?token={raw_token}"
+
+    # Send email (or print to console in hackathon mode)
+    send_reset_email(operator.email, reset_link)
+
+    logger.info(f"Password reset token generated for: {data.email}")
+    return safe_response
+
+
+# ── Verify Reset Token ───────────────────────────────────────────────────────
+
+@app.get("/auth/reset-password/verify")
+async def verify_reset_token(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify a password reset token is valid and not expired.
+    """
+    if not token or len(token) < 10:
+        return {"valid": False, "error_code": "INVALID_TOKEN", "message": "Invalid reset token"}
+
+    hashed = hash_token(token)
+    operator = db.query(Operator).filter(
+        Operator.reset_password_token == hashed,
+        Operator.reset_password_expires_at > datetime.utcnow()
+    ).first()
+
+    if not operator:
+        return {"valid": False, "error_code": "TOKEN_EXPIRED", "message": "Reset link is invalid or expired"}
+
+    return {"valid": True}
+
+
+# ── Reset Password ───────────────────────────────────────────────────────────
+
+@app.post("/auth/reset-password")
+async def reset_password(
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using a valid token.
+    Token is single-use and cleared after successful reset.
+    """
+    # Validate password strength
+    pw_error = validate_password_strength(data.new_password)
+    if pw_error:
+        raise HTTPException(status_code=400, detail=pw_error)
+
+    # Find operator by hashed token
+    hashed = hash_token(data.token)
+    operator = db.query(Operator).filter(
+        Operator.reset_password_token == hashed,
+        Operator.reset_password_expires_at > datetime.utcnow()
+    ).first()
+
+    if not operator:
+        raise HTTPException(
+            status_code=400,
+            detail="Reset link is invalid or expired",
+        )
+
+    # Update password
+    operator.password_hash = get_password_hash(data.new_password)
+
+    # Clear reset token (single-use)
+    operator.reset_password_token = None
+    operator.reset_password_expires_at = None
+
+    db.commit()
+
+    logger.info(f"Password reset successful for operator: {operator.email}")
+    return {"message": "Password reset successful. You can now log in with your new password."}
 
 
 # ============================================================================
