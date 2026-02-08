@@ -164,6 +164,57 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_bookings: {
+        Row: {
+          caller_name: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_date: string
+          meeting_time: string
+          meeting_title: string
+          notes: string | null
+          script_content: string | null
+          script_id: string | null
+          status: string
+          transcript_summary: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          caller_name: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_date: string
+          meeting_time: string
+          meeting_title: string
+          notes?: string | null
+          script_content?: string | null
+          script_id?: string | null
+          status?: string
+          transcript_summary?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          caller_name?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_date?: string
+          meeting_time?: string
+          meeting_title?: string
+          notes?: string | null
+          script_content?: string | null
+          script_id?: string | null
+          status?: string
+          transcript_summary?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

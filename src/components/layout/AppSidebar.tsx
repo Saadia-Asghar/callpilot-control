@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Phone, CalendarDays, FileText, Settings, Brain, Headphones,
   GitBranch, Zap, Hand, Mic, Play, Network, AlertOctagon, FlaskConical,
   Home, ClipboardList, Code2, Building2, PhoneMissed, PlayCircle, Download,
-  MessageSquare, Sparkles, Moon, Sun,
+  MessageSquare, Sparkles, Moon, Sun, BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -18,6 +18,7 @@ const coreNav = [
   { title: "Live Call", url: "/live-call", icon: Phone },
   { title: "Calendar", url: "/calendar", icon: CalendarDays },
   { title: "Call Logs", url: "/call-logs", icon: FileText },
+  { title: "Meetings", url: "/meetings", icon: BookOpen },
 ];
 
 const intelligenceNav = [
