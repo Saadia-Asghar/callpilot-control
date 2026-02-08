@@ -1,88 +1,16 @@
-import { useState, useEffect } from "react";
-import { FileText, Edit3, CheckCircle2, RotateCcw, Eye, Clock, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { FileText, Edit3, CheckCircle2, RotateCcw, Eye, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import api from "@/lib/api";
 
-function DraftDetails({ draft, onFinalize, onReopen }: { draft: any; onFinalize: (id: number) => void; onReopen: (id: number) => void }) {
-  const [draftDetails, setDraftDetails] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchDetails = async () => {
-      try {
-        const details = await api.getDraft(draft.id);
-        setDraftDetails(details);
-      } catch (error) {
-        console.error('Failed to fetch draft details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (draft.id) {
-      fetchDetails();
-    }
-  }, [draft.id]);
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
-  }
-
-  const intake = draftDetails?.structured_intake || draft.structured_intake || {};
-  const transcript = draftDetails?.raw_transcript || draft.raw_transcript || '';
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold text-card-foreground mb-2">Session: {draft.session_id || `Call ${draft.id}`}</h3>
-        <p className="text-xs text-muted-foreground">Channel: {draft.channel || 'voice'}</p>
-        <p className="text-xs text-muted-foreground mt-1">Preset: {draft.industry_preset || 'default'}</p>
-        {draft.started_at && (
-          <p className="text-xs text-muted-foreground mt-1">
-            <Clock className="h-3 w-3 inline mr-1" />
-            {new Date(draft.started_at).toLocaleString()}
-          </p>
-        )}
-      </div>
-      {transcript && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-card-foreground">Transcript</h4>
-          <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded max-h-32 overflow-y-auto">
-            {transcript.substring(0, 200)}{transcript.length > 200 ? '...' : ''}
-          </div>
-        </div>
-      )}
-      {Object.keys(intake).length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-card-foreground">Structured Intake</h4>
-          <div className="space-y-1.5 text-xs">
-            {Object.entries(intake).map(([key, value]) => (
-              <div key={key}>
-                <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
-                <span className="text-card-foreground">{String(value)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="flex gap-2">
-        {draft.is_draft && (
-          <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs" onClick={() => onFinalize(draft.id)}>
-            <CheckCircle2 className="h-3 w-3" /> Finalize
-          </Button>
-        )}
-        {!draft.is_draft && draft.status === 'completed' && (
-          <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs" onClick={() => onReopen(draft.id)}>
-            <RotateCcw className="h-3 w-3" /> Reopen
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+const MOCK_DRAFTS = [
+  { id: 1, caller_name: "Sarah Chen", status: "draft", industry_preset: "healthcare", operator: "Agent A", created_at: new Date().toISOString(), structured_intake: { reason: "Follow-up check", preferred_time: "Morning" } },
+  { id: 2, caller_name: "James Park", status: "completed", industry_preset: "legal", operator: "Agent B", created_at: new Date(Date.now() - 3600000).toISOString(), structured_intake: { reason: "Contract review", preferred_time: "Afternoon" } },
+  { id: 3, caller_name: "Maria Lopez", status: "draft", industry_preset: "dental", operator: "Agent A", created_at: new Date(Date.now() - 7200000).toISOString(), structured_intake: { reason: "New patient intake", preferred_time: "Flexible" } },
+];
 
 const statusConfig: Record<string, { label: string; class: string }> = {
   pending: { label: "Pending", class: "bg-warning/15 text-warning border-warning/30" },
@@ -94,58 +22,20 @@ const statusConfig: Record<string, { label: string; class: string }> = {
 
 export default function CallDrafts() {
   const [selected, setSelected] = useState<number | null>(null);
-  const [drafts, setDrafts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState(MOCK_DRAFTS);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchDrafts = async () => {
-      try {
-        const data = await api.listCallsByOperator(50, 0, true);
-        const list = Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []);
-        setDrafts(list);
-      } catch (error) {
-        console.error('Failed to fetch drafts:', error);
-        toast({ title: "Error", description: "Failed to load call drafts", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDrafts();
-  }, [toast]);
 
   const selectedDraft = drafts.find((d) => d.id === selected);
 
-  const handleFinalize = async (id: number) => {
-    try {
-      await api.saveDraft(id, { status: "completed", call_outcome: "booked" });
-      toast({ title: "Draft Finalized", description: `Draft ${id} has been marked as finalized.` });
-      // Refresh drafts
-      const data = await api.listCallsByOperator(50, 0, true);
-      setDrafts(Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []));
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to finalize draft", variant: "destructive" });
-    }
+  const handleFinalize = (id: number) => {
+    setDrafts((prev) => prev.map((d) => d.id === id ? { ...d, status: "completed" } : d));
+    toast({ title: "Draft Finalized", description: `Draft ${id} has been marked as finalized.` });
   };
 
-  const handleReopen = async (id: number) => {
-    try {
-      await api.saveDraft(id, { status: "draft" });
-      toast({ title: "Draft Reopened", description: `Draft ${id} has been reopened for editing.` });
-      const data = await api.listCallsByOperator(50, 0, true);
-      setDrafts(Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []));
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to reopen draft", variant: "destructive" });
-    }
+  const handleReopen = (id: number) => {
+    setDrafts((prev) => prev.map((d) => d.id === id ? { ...d, status: "draft" } : d));
+    toast({ title: "Draft Reopened", description: `Draft ${id} has been reopened for editing.` });
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -175,7 +65,7 @@ export default function CallDrafts() {
               <tbody className="divide-y divide-border">
                 {drafts.map((draft, i) => (
                   <motion.tr
-                    key={draft.id ?? i}
+                    key={draft.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
@@ -183,15 +73,13 @@ export default function CallDrafts() {
                     onClick={() => setSelected(draft.id)}
                   >
                     <td className="p-3">
-                      <p className="font-medium text-card-foreground">{draft.caller_name ?? draft.caller ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {draft.created_at ? new Date(draft.created_at).toLocaleDateString() : draft.date ?? "—"}
-                      </p>
+                      <p className="font-medium text-card-foreground">{draft.caller_name}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(draft.created_at).toLocaleDateString()}</p>
                     </td>
                     <td className="p-3 hidden sm:table-cell">
-                      <Badge variant="outline" className="text-[10px]">{draft.industry_preset ?? draft.preset ?? "—"}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{draft.industry_preset}</Badge>
                     </td>
-                    <td className="p-3 hidden md:table-cell text-muted-foreground">{draft.operator ?? "—"}</td>
+                    <td className="p-3 hidden md:table-cell text-muted-foreground">{draft.operator}</td>
                     <td className="p-3">
                       <Badge variant="outline" className={`text-[10px] ${(statusConfig[draft.status] ?? statusConfig.draft).class}`}>
                         {(statusConfig[draft.status] ?? statusConfig.draft).label}
@@ -228,11 +116,11 @@ export default function CallDrafts() {
             <div className="p-4 space-y-3">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Caller</p>
-                <p className="text-sm font-medium text-card-foreground">{selectedDraft.caller_name ?? selectedDraft.caller ?? "—"}</p>
+                <p className="text-sm font-medium text-card-foreground">{selectedDraft.caller_name}</p>
               </div>
-              {Object.entries(selectedDraft.structured_intake ?? selectedDraft.intake ?? {}).map(([key, val]) => (
+              {Object.entries(selectedDraft.structured_intake ?? {}).map(([key, val]) => (
                 <div key={key}>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{key}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{key.replace(/_/g, ' ')}</p>
                   <p className="text-sm text-card-foreground">{String(val)}</p>
                 </div>
               ))}

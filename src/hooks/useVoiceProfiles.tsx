@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface VoiceProfile {
   id: string;
@@ -25,20 +25,6 @@ const DEFAULT_VOICES: VoiceProfile[] = [
   { id: "v5", name: "Calm Support Agent", elevenlabs_voice_id: "pFZP5JQG7iQjIQuC4Bku", is_cloned: false, is_default: true, warmth: 75, professionalism: 65, energy: 30, speed: 40, expressiveness: 55 },
 ];
 
-function mapSavedToProfile(s: any): VoiceProfile {
-  return {
-    id: s.saved_voice_id ?? s.id ?? s.voice_id,
-    name: s.voice_name ?? s.name ?? "Saved Voice",
-    elevenlabs_voice_id: s.voice_id ?? null,
-    is_cloned: true,
-    warmth: s.tone ?? 50,
-    professionalism: 50,
-    energy: s.energy ?? 50,
-    speed: s.speed ?? 50,
-    expressiveness: (s.style ?? 0) * 100,
-  };
-}
-
 export function useVoiceProfiles() {
   const queryClient = useQueryClient();
 
@@ -46,60 +32,55 @@ export function useVoiceProfiles() {
     queryKey: ["voice_profiles"],
     queryFn: async () => {
       try {
-        const [savedRes, listRes] = await Promise.all([
-          api.getSavedVoices().catch(() => ({ saved_voices: [] })),
-          api.listVoices(undefined, undefined, undefined, true).catch(() => ({ voices: [] })),
-        ]);
-        const saved = (savedRes as any)?.saved_voices ?? savedRes ?? [];
-        const list = (listRes as any)?.voices ?? listRes ?? [];
-        const fromSaved = Array.isArray(saved) ? saved.map(mapSavedToProfile) : [];
-        const fromList = Array.isArray(list) ? list.map((v: any) => ({
-          id: v.voice_id ?? v.id,
-          name: v.name ?? v.voice_name ?? "Voice",
-          elevenlabs_voice_id: v.voice_id ?? v.elevenlabs_voice_id ?? null,
-          is_cloned: v.is_cloned ?? false,
-          warmth: v.tone ?? v.warmth ?? 50,
-          energy: v.energy ?? 50,
-          speed: v.speed ?? 50,
-          expressiveness: (v.style ?? 0) * 100,
-          professionalism: 50,
-        })) : [];
-        const combined = [...fromSaved, ...fromList];
-        if (combined.length === 0) return DEFAULT_VOICES;
-        const seen = new Set<string>();
-        const out: VoiceProfile[] = [];
-        combined.forEach((v) => {
-          const id = v.id ?? v.elevenlabs_voice_id;
-          if (id && !seen.has(id)) {
-            seen.add(id);
-            out.push(v);
-          }
-        });
-        return out.length ? out : DEFAULT_VOICES;
+        const { data, error } = await supabase
+          .from("voice_profiles")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error || !data?.length) return DEFAULT_VOICES;
+
+        return data.map((v): VoiceProfile => ({
+          id: v.id,
+          name: v.name,
+          elevenlabs_voice_id: v.elevenlabs_voice_id,
+          is_cloned: v.is_cloned,
+          is_default: v.is_default,
+          is_business_voice: v.is_business_voice,
+          quality_score: v.quality_score,
+          warmth: v.warmth,
+          professionalism: v.professionalism,
+          energy: v.energy,
+          speed: v.speed,
+          expressiveness: v.expressiveness,
+          last_used_at: v.last_used_at,
+        }));
       } catch {
         return DEFAULT_VOICES;
       }
     },
-    enabled: true,
   });
 
   const saveVoice = useMutation({
     mutationFn: async (profile: Partial<VoiceProfile> & { elevenlabs_voice_id: string; name: string }) => {
-      await api.saveVoice({
-        voice_id: profile.elevenlabs_voice_id,
-        voice_name: profile.name,
-        tone: profile.warmth ?? 50,
+      const { error } = await supabase.from("voice_profiles").insert({
+        name: profile.name,
+        elevenlabs_voice_id: profile.elevenlabs_voice_id,
+        warmth: profile.warmth ?? 50,
         speed: profile.speed ?? 50,
         energy: profile.energy ?? 50,
+        professionalism: profile.professionalism ?? 50,
+        expressiveness: profile.expressiveness ?? 50,
+        is_cloned: profile.is_cloned ?? false,
       });
+      if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["voice_profiles"] }),
   });
 
   const deleteVoice = useMutation({
-    mutationFn: async (_id: string) => {
-      // Backend delete could be added; no-op for now
-      await Promise.resolve();
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("voice_profiles").delete().eq("id", id);
+      if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["voice_profiles"] }),
   });
