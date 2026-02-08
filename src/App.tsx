@@ -32,6 +32,7 @@ import CallSimulation from "./pages/CallSimulation";
 import ExportCRM from "./pages/ExportCRM";
 import Feedback from "./pages/Feedback";
 import AISuggestions from "./pages/AISuggestions";
+import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
               {/* Protected app routes */}
               <Route path="/*" element={
                 <ProtectedRoute>
