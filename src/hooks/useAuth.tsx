@@ -100,84 +100,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name?: string,
     business_name?: string
   ) => {
-    // When Supabase is configured (deployed on Lovable/Vercel), use it exclusively
-    if (isSupabaseConfigured && supabase) {
-      try {
-      const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name, business_name },
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-        if (error) {
-          return { error: { message: error.message } };
-        }
-        if (data.user) {
-          // Supabase may return a user even if email confirmation is required
-          // identities array is empty when email is already taken (in some configs)
-          if (
-            data.user.identities &&
-            data.user.identities.length === 0
-          ) {
-            return {
-              error: {
-                message:
-                  "This email is already registered. Try logging in instead.",
-              },
-            };
-          }
-          setUser({
-            id: data.user.id,
-            email: data.user.email ?? email,
-            name,
-            business_name,
-            provider: "supabase",
-          });
-          return { error: null };
-        }
-        return { error: null }; // signup successful, may need email confirmation
-      } catch (err: any) {
-        return {
-          error: { message: err?.message || "Sign up failed" },
-        };
-      }
+    if (!supabase) {
+      return { error: { message: "Authentication service not available. Please refresh and try again." } };
     }
-
-    return { error: { message: "Authentication service not available." } };
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name, business_name },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) {
+        return { error: { message: error.message } };
+      }
+      if (data.user) {
+        if (data.user.identities && data.user.identities.length === 0) {
+          return { error: { message: "This email is already registered. Try logging in instead." } };
+        }
+        setUser({
+          id: data.user.id,
+          email: data.user.email ?? email,
+          name,
+          business_name,
+          provider: "supabase",
+        });
+        return { error: null };
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: { message: err?.message || "Sign up failed" } };
+    }
   };
 
   // ── Sign In ──
   const signIn = async (email: string, password: string) => {
-    // When Supabase is configured, use it exclusively
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) {
-          return { error: { message: error.message } };
-        }
-        if (data.user) {
-          setUser({
-            id: data.user.id,
-            email: data.user.email ?? email,
-            name: data.user.user_metadata?.full_name,
-            provider: "supabase",
-          });
-          return { error: null };
-        }
-        return { error: { message: "Login failed" } };
-      } catch (err: any) {
-        return {
-          error: { message: err?.message || "Login failed" },
-        };
-      }
+    if (!supabase) {
+      return { error: { message: "Authentication service not available. Please refresh and try again." } };
     }
-
-    return { error: { message: "Authentication service not available." } };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        return { error: { message: error.message } };
+      }
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email ?? email,
+          name: data.user.user_metadata?.full_name,
+          provider: "supabase",
+        });
+        return { error: null };
+      }
+      return { error: { message: "Login failed" } };
+    } catch (err: any) {
+      return { error: { message: err?.message || "Login failed" } };
+    }
   };
 
   // ── Sign Out ──
