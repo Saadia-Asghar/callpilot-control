@@ -1,43 +1,25 @@
 """
 Voice hooks for text-to-speech and speech-to-text integration.
-Placeholder implementations that can be swapped with ElevenLabs and Whisper.
+Now uses ElevenLabs voice service for TTS.
 """
 from typing import Optional
 from config import settings
+from voice_service import voice_service
 
 
-def text_to_speech(text: str, voice_id: Optional[str] = None) -> dict:
+def text_to_speech(text: str, voice_id: Optional[str] = None, style: Optional[float] = None) -> dict:
     """
-    Convert text to speech audio.
-    
-    This is a placeholder function. Replace with actual ElevenLabs integration:
-    - Use ElevenLabs API to generate speech
-    - Return audio file path or bytes
+    Convert text to speech audio using ElevenLabs.
     
     Args:
         text: Text to convert to speech
-        voice_id: Optional voice ID for ElevenLabs
+        voice_id: Optional voice ID for ElevenLabs (uses default if not provided)
+        style: Optional style parameter (0.0-1.0)
     
     Returns:
-        Dict with audio data or file path
+        Dict with audio_bytes, format, and metadata
     """
-    # Placeholder implementation
-    # TODO: Integrate with ElevenLabs API
-    # Example:
-    # import requests
-    # response = requests.post(
-    #     "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-    #     headers={"xi-api-key": settings.elevenlabs_api_key},
-    #     json={"text": text}
-    # )
-    # return {"audio_bytes": response.content, "format": "mp3"}
-    
-    return {
-        "status": "placeholder",
-        "text": text,
-        "message": "TTS placeholder - integrate with ElevenLabs",
-        "audio_path": None
-    }
+    return voice_service.text_to_speech(text=text, voice_id=voice_id, style=style)
 
 
 def speech_to_text(audio_data: bytes, language: str = "en") -> dict:
@@ -92,7 +74,7 @@ def process_voice_input(audio_data: bytes) -> str:
     return result.get("text", "")
 
 
-def generate_voice_response(text: str) -> dict:
+def generate_voice_response(text: str, voice_id: Optional[str] = None, style: Optional[float] = None) -> dict:
     """
     Generate voice response from text.
     
@@ -100,8 +82,10 @@ def generate_voice_response(text: str) -> dict:
     
     Args:
         text: Text to convert to speech
+        voice_id: Optional voice ID (uses default if not provided)
+        style: Optional style parameter (0.0-1.0)
     
     Returns:
         Dict with audio data
     """
-    return text_to_speech(text)
+    return text_to_speech(text, voice_id=voice_id, style=style)

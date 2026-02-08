@@ -8,15 +8,27 @@ This repository contains both the **backend API** (Python/FastAPI) and **fronten
 
 ### Backend (Python/FastAPI)
 - 🤖 **LLM-Powered Agent**: Autonomous scheduling agent using OpenAI or Gemini with function calling
-- 📅 **Smart Scheduling**: Business hours management, conflict detection, and alternative slot suggestions
+- 📅 **Smart Scheduling**: Business hours management, conflict detection, and AI-optimized slot suggestions
 - 🗄️ **SQLite Database**: Persistent storage for users, bookings, preferences, and call logs
-- 🎤 **Voice Integration Hooks**: Placeholder functions for ElevenLabs TTS and Whisper STT
+- 🎤 **Voice Integration**: ElevenLabs TTS with voice cloning and dynamic persona support
 - 📊 **Call Summaries**: Structured JSON and human-readable summaries after each call
 - 🔧 **Tool Functions**: Agent can call availability checks, booking, rescheduling, and preference management
 - 📅 **Google Calendar Integration**: Sync appointments with Google Calendar (with mock mode)
 - 🌐 **Web Interface**: Simple HTML frontend for testing and interaction
 - 🔌 **WebSocket Support**: Real-time communication for voice interactions
 - 📝 **Logging**: Comprehensive logging system for debugging and monitoring
+
+### Advanced Features (New!)
+- 🎯 **Smart Scheduling Optimization**: AI-powered slot suggestions based on historical patterns
+- 🧠 **Context-Aware Calls**: Call history tracking and AI follow-up suggestions
+- 🏥 **Auto-Triage**: Structured intake with AI appointment type/priority recommendations
+- 📈 **Dashboard Insights**: Comprehensive metrics and AI efficiency recommendations
+- 📱 **Multi-Channel Support**: Voice, chat, WhatsApp, and form submissions
+- 🔍 **Explainable AI**: Detailed reasoning for all AI decisions
+- 🔄 **Recovery & No-Show Prevention**: Automated recovery tracking and prevention
+- 🧪 **Call Simulation**: Test and demo mode with simulated calls
+- ⭐ **Feedback Loop**: Rate AI responses and track improvement metrics
+- 🎬 **Demo Mode**: Pre-loaded demo calls for first-time users (max 3)
 
 ### Frontend (React/TypeScript)
 - Modern dashboard built with Vite, React, TypeScript, and shadcn-ui
