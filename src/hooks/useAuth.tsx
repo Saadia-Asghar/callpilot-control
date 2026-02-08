@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
-import api from "@/lib/api";
+
 
 interface User {
   id: string | number;
@@ -57,28 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2. Check backend token (only when Supabase isn't configured — i.e. local dev)
-      if (!isSupabaseConfigured) {
-        const token = localStorage.getItem("callpilot_token");
-        if (token) {
-          try {
-            const me: any = await api.request("/auth/me");
-            if (me && !cancelled) {
-              setUser({
-                id: me.operator_id ?? me.id ?? 0,
-                email: me.email ?? "",
-                name: me.name,
-                business_name: me.business_name,
-                provider: "backend",
-              });
-              setLoading(false);
-              return;
-            }
-          } catch {
-            localStorage.removeItem("callpilot_token");
-          }
-        }
-      }
+      // No backend fallback — Cloud auth only
 
       if (!cancelled) setLoading(false);
     };
@@ -124,10 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // When Supabase is configured (deployed on Lovable/Vercel), use it exclusively
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name, business_name } },
+          options: {
+            data: { full_name: name, business_name },
+            emailRedirectTo: `${window.location.origin}/`,
+          },
         });
         if (error) {
           return { error: { message: error.message } };
@@ -163,16 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Fallback: Python backend (local dev only)
-    try {
-      await api.register(email, password, name, business_name);
-      setUser({ id: 0, email, name, business_name, provider: "backend" });
-      return { error: null };
-    } catch (error: any) {
-      const errorMsg =
-        error.message || error.detail || "Registration failed";
-      return { error: { message: errorMsg } };
-    }
+    return { error: { message: "Authentication service not available." } };
   };
 
   // ── Sign In ──
@@ -204,15 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Fallback: Python backend (local dev only)
-    try {
-      await api.login(email, password);
-      setUser({ id: 0, email, provider: "backend" });
-      return { error: null };
-    } catch (error: any) {
-      const errorMsg = error.message || error.detail || "Login failed";
-      return { error: { message: errorMsg } };
-    }
+    return { error: { message: "Authentication service not available." } };
   };
 
   // ── Sign Out ──
@@ -220,7 +185,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }
-    api.logout();
     setUser(null);
   };
 
