@@ -102,7 +102,7 @@ export default function CallDrafts() {
     const fetchDrafts = async () => {
       try {
         const data = await api.listCallsByOperator(50, 0, true);
-        const list = Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []);
+        const list = Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []);
         setDrafts(list);
       } catch (error) {
         console.error('Failed to fetch drafts:', error);
@@ -122,7 +122,7 @@ export default function CallDrafts() {
       toast({ title: "Draft Finalized", description: `Draft ${id} has been marked as finalized.` });
       // Refresh drafts
       const data = await api.listCallsByOperator(50, 0, true);
-      setDrafts(Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []));
+      setDrafts(Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []));
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to finalize draft", variant: "destructive" });
     }
@@ -132,9 +132,8 @@ export default function CallDrafts() {
     try {
       await api.saveDraft(id, { status: "draft" });
       toast({ title: "Draft Reopened", description: `Draft ${id} has been reopened for editing.` });
-      // Refresh drafts
       const data = await api.listCallsByOperator(50, 0, true);
-      setDrafts(Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []));
+      setDrafts(Array.isArray(data) ? data : ((data as any)?.calls ?? (data as any)?.items ?? []));
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to reopen draft", variant: "destructive" });
     }
@@ -234,7 +233,7 @@ export default function CallDrafts() {
               {Object.entries(selectedDraft.structured_intake ?? selectedDraft.intake ?? {}).map(([key, val]) => (
                 <div key={key}>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{key}</p>
-                  <p className="text-sm text-card-foreground">{val}</p>
+                  <p className="text-sm text-card-foreground">{String(val)}</p>
                 </div>
               ))}
               <div className="flex gap-2 pt-2">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Headphones, Phone, Mic, FileText, PhoneMissed, Sparkles,
@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { DemoVoiceClone } from "@/components/demo/DemoVoiceClone";
 import { DemoScheduler } from "@/components/demo/DemoScheduler";
 import { DemoDraftEditor } from "@/components/demo/DemoDraftEditor";
