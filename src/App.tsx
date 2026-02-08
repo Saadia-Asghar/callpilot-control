@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
@@ -44,12 +45,15 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="*" element={
+              {/* Protected app routes */}
+              <Route path="/*" element={
                 <ProtectedRoute>
                   <AppLayout>
                     <Routes>
-                      <Route path="/" element={<Onboarding />} />
+                      <Route path="/home" element={<Onboarding />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/live-call" element={<LiveCall />} />
                       <Route path="/calendar" element={<CalendarView />} />
