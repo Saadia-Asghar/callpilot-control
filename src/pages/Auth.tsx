@@ -9,9 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -29,8 +29,26 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast({ title: "Missing fields", description: "Enter email and password.", variant: "destructive" });
+    if (!email) {
+      toast({ title: "Missing email", description: "Enter your email address.", variant: "destructive" });
+      return;
+    }
+
+    if (mode === "forgot") {
+      setSubmitting(true);
+      const { error } = await resetPassword(email);
+      setSubmitting(false);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Check your email", description: "A password reset link has been sent to your email." });
+        setMode("login");
+      }
+      return;
+    }
+
+    if (!password) {
+      toast({ title: "Missing password", description: "Enter your password.", variant: "destructive" });
       return;
     }
     if (password.length < 6) {
@@ -52,7 +70,6 @@ export default function Auth() {
       }
       toast({ title: "Error", description: msg, variant: "destructive" });
     } else {
-      // Success — navigate immediately; useAuth will set user via onAuthStateChange
       toast({
         title: mode === "signup" ? "Account created!" : "Welcome back!",
         description: mode === "signup"
@@ -87,24 +104,33 @@ export default function Auth() {
 
         {/* Form */}
         <div className="rounded-2xl border border-border bg-card shadow-elevated p-8 space-y-6">
-          <div className="flex rounded-lg border border-border p-0.5">
-            <button
-              onClick={() => setMode("login")}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                mode === "login" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                mode === "signup" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
+          {mode !== "forgot" && (
+            <div className="flex rounded-lg border border-border p-0.5">
+              <button
+                onClick={() => setMode("login")}
+                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                  mode === "login" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Log In
+              </button>
+              <button
+                onClick={() => setMode("signup")}
+                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                  mode === "signup" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
+
+          {mode === "forgot" && (
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-foreground">Reset Password</h2>
+              <p className="text-sm text-muted-foreground mt-1">Enter your email to receive a reset link</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -122,33 +148,52 @@ export default function Auth() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs text-muted-foreground">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                />
+            {mode !== "forgot" && (
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-xs text-muted-foreground">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={() => setMode("forgot")}
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            )}
             <Button type="submit" className="w-full gradient-primary text-primary-foreground border-0" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {mode === "login" ? "Log In" : "Create Account"}
+              {mode === "forgot" ? "Send Reset Link" : mode === "login" ? "Log In" : "Create Account"}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-primary hover:underline font-medium">
-            {mode === "login" ? "Sign up" : "Log in"}
-          </button>
+          {mode === "forgot" ? (
+            <button onClick={() => setMode("login")} className="text-primary hover:underline font-medium">
+              Back to Log In
+            </button>
+          ) : (
+            <>
+              {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+              <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-primary hover:underline font-medium">
+                {mode === "login" ? "Sign up" : "Log in"}
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>
