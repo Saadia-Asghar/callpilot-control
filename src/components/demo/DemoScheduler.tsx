@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarCheck, CheckCircle2, Clock, Loader2, Sparkles } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Clock, Loader2, Sparkles, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const MOCK_SLOTS = [
   { time: "9:00 AM", day: "Tuesday", score: 96, reason: "Best match — low conflict, preferred morning" },
@@ -30,12 +31,10 @@ export function DemoScheduler({ onDemoUsed, remaining }: Props) {
   const [showSlots, setShowSlots] = useState(false);
   const [booked, setBooked] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const runSchedule = useCallback(() => {
-    if (remaining <= 0) {
-      toast({ title: "Demo limit reached", description: "Sign up for unlimited access!", variant: "destructive" });
-      return;
-    }
+    if (remaining <= 0) return;
     setRunning(true);
     setShowSlots(false);
     setBooked(null);
@@ -52,13 +51,31 @@ export function DemoScheduler({ onDemoUsed, remaining }: Props) {
         }
       }, (i + 1) * 700);
     });
-  }, [remaining, toast]);
+  }, [remaining]);
 
   const bookSlot = (slot: typeof MOCK_SLOTS[0]) => {
     setBooked(`${slot.day} ${slot.time}`);
     onDemoUsed();
     toast({ title: "✅ Slot Booked!", description: `${slot.day} at ${slot.time} — AI-optimized.` });
   };
+
+  // Exhausted state
+  if (remaining <= 0 && !booked && !showSlots) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+          <Lock className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-card-foreground">Scheduling Demo Complete</p>
+          <p className="text-xs text-muted-foreground mt-1">You've used all 3 free scheduling demos.</p>
+        </div>
+        <Button className="gap-2 gradient-primary text-primary-foreground border-0" onClick={() => navigate("/auth")}>
+          Sign Up for Unlimited Access <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -75,7 +92,7 @@ export function DemoScheduler({ onDemoUsed, remaining }: Props) {
           <Button
             className="gap-2 gradient-primary text-primary-foreground border-0"
             onClick={runSchedule}
-            disabled={running || remaining <= 0}
+            disabled={running}
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
             {running ? "Analyzing..." : "Find Best Slots"}
@@ -109,11 +126,7 @@ export function DemoScheduler({ onDemoUsed, remaining }: Props) {
       {/* Slot results */}
       <AnimatePresence>
         {showSlots && !booked && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-2"
-          >
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
             {MOCK_SLOTS.map((slot, i) => (
               <motion.div
                 key={i}
@@ -153,14 +166,16 @@ export function DemoScheduler({ onDemoUsed, remaining }: Props) {
           <CheckCircle2 className="h-8 w-8 text-success mx-auto mb-2" />
           <p className="text-sm font-semibold text-card-foreground">Booked: {booked}</p>
           <p className="text-[10px] text-muted-foreground mt-1">AI-optimized slot confirmed</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3 text-xs"
-            onClick={() => { setBooked(null); setShowSlots(false); }}
-          >
-            Try Again
-          </Button>
+          {remaining > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 text-xs"
+              onClick={() => { setBooked(null); setShowSlots(false); }}
+            >
+              Try Again
+            </Button>
+          )}
         </motion.div>
       )}
     </div>

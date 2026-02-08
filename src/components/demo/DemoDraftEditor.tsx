@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { motion, Reorder } from "framer-motion";
-import { FileText, GripVertical, Play, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { FileText, GripVertical, Play, CheckCircle2, Plus, Trash2, Download, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface DraftStep {
   id: string;
@@ -38,6 +39,7 @@ export function DemoDraftEditor({ onDemoUsed, remaining }: Props) {
   const [simStep, setSimStep] = useState(-1);
   const [newStep, setNewStep] = useState("");
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const addStep = () => {
     if (!newStep.trim()) return;
@@ -53,10 +55,7 @@ export function DemoDraftEditor({ onDemoUsed, remaining }: Props) {
   };
 
   const simulate = () => {
-    if (remaining <= 0) {
-      toast({ title: "Demo limit reached", description: "Sign up for unlimited access!", variant: "destructive" });
-      return;
-    }
+    if (remaining <= 0) return;
     setSimulating(true);
     setSimStep(0);
     steps.forEach((_, i) => {
@@ -73,6 +72,60 @@ export function DemoDraftEditor({ onDemoUsed, remaining }: Props) {
       }, (i + 1) * 600);
     });
   };
+
+  const exportDraft = (format: "json" | "csv") => {
+    const data = steps.map((s, i) => ({ order: i + 1, type: s.type, step: s.label }));
+    let content: string;
+    let filename: string;
+    let mimeType: string;
+
+    if (format === "json") {
+      content = JSON.stringify(data, null, 2);
+      filename = "callpilot-draft.json";
+      mimeType = "application/json";
+    } else {
+      const header = "Order,Type,Step\n";
+      const rows = data.map(d => `${d.order},${d.type},"${d.step}"`).join("\n");
+      content = header + rows;
+      filename = "callpilot-draft.csv";
+      mimeType = "text/csv";
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported!", description: `Draft saved as ${format.toUpperCase()}.` });
+  };
+
+  // Exhausted state
+  if (remaining <= 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+          <Lock className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-card-foreground">Draft Editor Demo Complete</p>
+          <p className="text-xs text-muted-foreground mt-1">You've used all 3 free draft simulations.</p>
+        </div>
+        <Button className="gap-2 gradient-primary text-primary-foreground border-0" onClick={() => navigate("/auth")}>
+          Sign Up for Unlimited Access <ArrowRight className="h-4 w-4" />
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => exportDraft("json")}>
+            <Download className="h-3 w-3" /> Export JSON
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => exportDraft("csv")}>
+            <Download className="h-3 w-3" /> Export CSV
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -100,12 +153,8 @@ export function DemoDraftEditor({ onDemoUsed, remaining }: Props) {
                 {step.type}
               </Badge>
               <span className="flex-1 text-xs text-card-foreground truncate">{step.label}</span>
-              {simStep > i && simulating && (
-                <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-              )}
-              {simStep === i && simulating && (
-                <div className="h-3 w-3 rounded-full border-2 border-primary animate-pulse shrink-0" />
-              )}
+              {simStep > i && simulating && <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />}
+              {simStep === i && simulating && <div className="h-3 w-3 rounded-full border-2 border-primary animate-pulse shrink-0" />}
               {!simulating && (
                 <button onClick={() => removeStep(step.id)} className="text-muted-foreground hover:text-destructive transition-colors">
                   <Trash2 className="h-3 w-3" />
@@ -130,18 +179,23 @@ export function DemoDraftEditor({ onDemoUsed, remaining }: Props) {
         </Button>
       </div>
 
-      {/* Simulate button */}
-      <Button
-        className="w-full gap-2 gradient-primary text-primary-foreground border-0"
-        onClick={simulate}
-        disabled={simulating || steps.length === 0 || remaining <= 0}
-      >
-        <Play className="h-4 w-4" />
-        {simulating ? "Simulating..." : "Run Script Preview"}
-      </Button>
+      {/* Actions row */}
+      <div className="flex gap-2">
+        <Button
+          className="flex-1 gap-2 gradient-primary text-primary-foreground border-0"
+          onClick={simulate}
+          disabled={simulating || steps.length === 0}
+        >
+          <Play className="h-4 w-4" />
+          {simulating ? "Simulating..." : "Run Script Preview"}
+        </Button>
+        <Button variant="outline" size="icon" onClick={() => exportDraft("json")} title="Export JSON">
+          <Download className="h-4 w-4" />
+        </Button>
+      </div>
 
       <p className="text-[10px] text-muted-foreground text-center">
-        Drag steps to reorder · Add custom steps · Preview AI execution
+        Drag steps to reorder · Add custom steps · Export as JSON or CSV
       </p>
     </div>
   );
