@@ -121,7 +121,9 @@ class ApiClient {
     const params = new URLSearchParams();
     if (sessionId) params.append('session_id', sessionId);
     if (userId) params.append('user_id', userId.toString());
-    return this.request(`/demo/usage/${featureName}`, {
+    const query = params.toString();
+    const url = query ? `/demo/usage/${featureName}?${query}` : `/demo/usage/${featureName}`;
+    return this.request(url, {
       method: 'PATCH',
     });
   }

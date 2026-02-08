@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable/index";
+const oauthAvailable = lovable.isOAuthAvailable;
 
 export default function Auth() {
   const { user, loading } = useAuth();
@@ -62,6 +63,10 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!oauthAvailable) {
+      toast({ title: "Not configured", description: "Use email and password, or set VITE_SUPABASE_* for Google Sign-In.", variant: "destructive" });
+      return;
+    }
     setGoogleLoading(true);
     try {
       const { error } = await lovable.auth.signInWithOAuth("google", {
@@ -71,7 +76,7 @@ export default function Auth() {
         toast({ title: "Google Sign-In Failed", description: error.message, variant: "destructive" });
       }
     } catch (err: any) {
-      toast({ title: "Error", description: "Could not initiate Google Sign-In.", variant: "destructive" });
+      toast({ title: "Error", description: err?.message ?? "Could not initiate Google Sign-In.", variant: "destructive" });
     } finally {
       setGoogleLoading(false);
     }
@@ -120,12 +125,13 @@ export default function Auth() {
             </button>
           </div>
 
-          {/* Google OAuth */}
+          {/* Google OAuth (optional; requires Supabase env vars) */}
           <Button
             variant="outline"
             className="w-full gap-2"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
+            title={!oauthAvailable ? "Configure VITE_SUPABASE_* for Google Sign-In" : undefined}
           >
             {googleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

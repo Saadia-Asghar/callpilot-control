@@ -84,9 +84,10 @@ function DraftDetails({ draft, onFinalize, onReopen }: { draft: any; onFinalize:
   );
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; class: string }> = {
   pending: { label: "Pending", class: "bg-warning/15 text-warning border-warning/30" },
   finalized: { label: "Finalized", class: "bg-success/15 text-success border-success/30" },
+  completed: { label: "Completed", class: "bg-success/15 text-success border-success/30" },
   editing: { label: "Editing", class: "bg-info/15 text-info border-info/30" },
   draft: { label: "Draft", class: "bg-info/15 text-info border-info/30" },
 };
@@ -101,7 +102,8 @@ export default function CallDrafts() {
     const fetchDrafts = async () => {
       try {
         const data = await api.listCallsByOperator(50, 0, true);
-        setDrafts(data.calls || []);
+        const list = Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []);
+        setDrafts(list);
       } catch (error) {
         console.error('Failed to fetch drafts:', error);
         toast({ title: "Error", description: "Failed to load call drafts", variant: "destructive" });
@@ -120,7 +122,7 @@ export default function CallDrafts() {
       toast({ title: "Draft Finalized", description: `Draft ${id} has been marked as finalized.` });
       // Refresh drafts
       const data = await api.listCallsByOperator(50, 0, true);
-      setDrafts(data.calls || []);
+      setDrafts(Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []));
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to finalize draft", variant: "destructive" });
     }
@@ -132,7 +134,7 @@ export default function CallDrafts() {
       toast({ title: "Draft Reopened", description: `Draft ${id} has been reopened for editing.` });
       // Refresh drafts
       const data = await api.listCallsByOperator(50, 0, true);
-      setDrafts(data.calls || []);
+      setDrafts(Array.isArray(data) ? data : (data?.calls ?? data?.items ?? []));
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to reopen draft", variant: "destructive" });
     }
@@ -172,9 +174,9 @@ export default function CallDrafts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockDrafts.map((draft, i) => (
+                {drafts.map((draft, i) => (
                   <motion.tr
-                    key={draft.id}
+                    key={draft.id ?? i}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
@@ -182,16 +184,18 @@ export default function CallDrafts() {
                     onClick={() => setSelected(draft.id)}
                   >
                     <td className="p-3">
-                      <p className="font-medium text-card-foreground">{draft.caller}</p>
-                      <p className="text-xs text-muted-foreground">{draft.date}</p>
+                      <p className="font-medium text-card-foreground">{draft.caller_name ?? draft.caller ?? "—"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {draft.created_at ? new Date(draft.created_at).toLocaleDateString() : draft.date ?? "—"}
+                      </p>
                     </td>
                     <td className="p-3 hidden sm:table-cell">
-                      <Badge variant="outline" className="text-[10px]">{draft.preset}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{draft.industry_preset ?? draft.preset ?? "—"}</Badge>
                     </td>
-                    <td className="p-3 hidden md:table-cell text-muted-foreground">{draft.operator}</td>
+                    <td className="p-3 hidden md:table-cell text-muted-foreground">{draft.operator ?? "—"}</td>
                     <td className="p-3">
-                      <Badge variant="outline" className={`text-[10px] ${statusConfig[draft.status].class}`}>
-                        {statusConfig[draft.status].label}
+                      <Badge variant="outline" className={`text-[10px] ${(statusConfig[draft.status] ?? statusConfig.draft).class}`}>
+                        {(statusConfig[draft.status] ?? statusConfig.draft).label}
                       </Badge>
                     </td>
                     <td className="p-3">
@@ -225,9 +229,9 @@ export default function CallDrafts() {
             <div className="p-4 space-y-3">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Caller</p>
-                <p className="text-sm font-medium text-card-foreground">{selectedDraft.caller}</p>
+                <p className="text-sm font-medium text-card-foreground">{selectedDraft.caller_name ?? selectedDraft.caller ?? "—"}</p>
               </div>
-              {Object.entries(selectedDraft.intake).map(([key, val]) => (
+              {Object.entries(selectedDraft.structured_intake ?? selectedDraft.intake ?? {}).map(([key, val]) => (
                 <div key={key}>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{key}</p>
                   <p className="text-sm text-card-foreground">{val}</p>
