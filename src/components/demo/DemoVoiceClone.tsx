@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Pause, Volume2, Loader2, Download, ArrowRight, Lock, Info, Square } from "lucide-react";
+import { Mic, MicOff, Pause, Volume2, Loader2, Download, ArrowRight, Lock, Info, Square, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
@@ -403,15 +403,32 @@ export function DemoVoiceClone({ onDemoUsed, remaining }: Props) {
             <Pause className="h-4 w-4" />
           </Button>
         )}
-        {lastBlobUrl && !playing && remaining > 0 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={downloadRecording} title="Download recording">
-                <Download className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Export cloned audio</TooltipContent>
-          </Tooltip>
+      {lastBlobUrl && !playing && remaining > 0 && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={downloadRecording} title="Download recording">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export cloned audio</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => navigate("/auth")}
+                >
+                  <Save className="h-3.5 w-3.5" /> Save Voice
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[200px] text-xs">
+                Sign up to save your voice and use it on any script or call draft.
+              </TooltipContent>
+            </Tooltip>
+          </>
         )}
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Mic, Play, Pause, Search, Upload, Volume2, Star, MoreVertical, CheckCircle2, Loader2, Music } from "lucide-react";
+import { Mic, Play, Pause, Search, Upload, Volume2, Star, MoreVertical, CheckCircle2, Loader2, Music, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,11 @@ import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GlassPanel, GlassPanelHeader, GlassPanelContent } from "@/components/agent/GlassPanel";
 import { useToast } from "@/hooks/use-toast";
+import { useVoiceProfiles } from "@/hooks/useVoiceProfiles";
+import { SaveVoiceDialog } from "@/components/voice/SaveVoiceDialog";
 
 interface VoiceProfile {
   id: string;
@@ -67,6 +70,21 @@ export default function VoiceCloneStudio() {
   const [showCloneFlow, setShowCloneFlow] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const { saveVoice } = useVoiceProfiles();
+
+  const handleSaveVoice = async (name: string, settings: { warmth: number; speed: number; energy: number; elevenlabs_voice_id: string }) => {
+    await saveVoice.mutateAsync({
+      name,
+      warmth: settings.warmth,
+      speed: settings.speed,
+      energy: settings.energy,
+      elevenlabs_voice_id: settings.elevenlabs_voice_id,
+      professionalism: sliders.professionalism,
+      expressiveness: sliders.expressiveness,
+      is_cloned: true,
+      quality_score: 85,
+    });
+  };
 
   const filteredVoices = voices.filter((v) => {
     const matchSearch = v.name.toLowerCase().includes(search.toLowerCase());
@@ -297,6 +315,14 @@ export default function VoiceCloneStudio() {
                   {generatingTTS ? <Loader2 className="h-3 w-3 animate-spin" /> : playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                   {generatingTTS ? "Generating..." : playing ? "Playing..." : "Preview"}
                 </Button>
+                <SaveVoiceDialog
+                  onSave={handleSaveVoice}
+                  voiceId={selectedVoice.elevenlabs_voice_id ?? ""}
+                  warmth={sliders.warmth}
+                  speed={sliders.speed}
+                  energy={sliders.energy}
+                  disabled={!selectedVoice.elevenlabs_voice_id}
+                />
               </div>
             </GlassPanelHeader>
             <GlassPanelContent>

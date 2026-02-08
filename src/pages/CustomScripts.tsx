@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { Code2, Plus, Play, Search, Trash2, Copy, Sparkles } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Code2, Plus, Play, Search, Trash2, Copy, Sparkles, Download, Loader2, Pause, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { useVoiceProfiles, type VoiceProfile } from "@/hooks/useVoiceProfiles";
+import { VoiceSelector } from "@/components/voice/VoiceSelector";
 
 interface Script {
   id: string;
@@ -29,11 +32,19 @@ const typeColors: Record<string, string> = {
   custom: "bg-primary/15 text-primary border-primary/30",
 };
 
+const TEXT_LIMIT = 500;
+
 export default function CustomScripts() {
   const [scripts] = useState<Script[]>(mockScripts);
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<string | null>(null);
+  const [ttsText, setTtsText] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState<VoiceProfile | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [lastBlobUrl, setLastBlobUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const { voices, isLoading: voicesLoading } = useVoiceProfiles();
 
   const filtered = scripts.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) || s.operator.toLowerCase().includes(search.toLowerCase())
@@ -45,6 +56,49 @@ export default function CustomScripts() {
 
   const handleAiSuggest = () => {
     toast({ title: "✨ AI Suggestion", description: "Generating optimized script based on call history…" });
+  };
+
+  const handleGenerateTTS = useCallback(async () => {
+    if (!selectedVoice?.elevenlabs_voice_id || !ttsText.trim()) return;
+    setGenerating(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: ttsText, voiceId: selectedVoice.elevenlabs_voice_id }),
+        }
+      );
+      if (!response.ok) throw new Error("TTS failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      setLastBlobUrl(url);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
+    } catch {
+      toast({ title: "TTS failed", description: "Could not generate speech.", variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  }, [selectedVoice, ttsText, toast, lastBlobUrl]);
+
+  const handleExport = () => {
+    if (!lastBlobUrl) return;
+    const a = document.createElement("a");
+    a.href = lastBlobUrl;
+    a.download = `script-audio-${selectedVoice?.name?.toLowerCase().replace(/\s+/g, "-") ?? "voice"}.mp3`;
+    a.click();
+    toast({ title: "Downloaded!", description: "Script audio exported." });
   };
 
   return (
@@ -66,6 +120,65 @@ export default function CustomScripts() {
           <Button size="sm" className="gap-1.5 text-xs gradient-primary text-primary-foreground border-0">
             <Plus className="h-3.5 w-3.5" /> New Script
           </Button>
+        </div>
+      </div>
+
+      {/* Voice TTS Panel */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-card space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Volume2 className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-card-foreground">Generate Script Audio</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[10px] text-muted-foreground cursor-help">ⓘ</span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[220px] text-xs">
+              Select a saved voice from your Voice Clone Studio, type or paste your script, and generate TTS audio instantly.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <VoiceSelector
+            voices={voices}
+            selectedId={selectedVoice?.id ?? null}
+            onSelect={setSelectedVoice}
+            isLoading={voicesLoading}
+          />
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-muted-foreground">Script Text</label>
+            <Textarea
+              value={ttsText}
+              onChange={(e) => setTtsText(e.target.value.slice(0, TEXT_LIMIT))}
+              placeholder="Type or paste your script text here..."
+              className="text-xs min-h-[60px] resize-none"
+              maxLength={TEXT_LIMIT}
+            />
+            <span className={`text-[10px] ${ttsText.length >= TEXT_LIMIT ? "text-destructive" : "text-muted-foreground"}`}>
+              {ttsText.length}/{TEXT_LIMIT}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            className="gap-2 gradient-primary text-primary-foreground border-0 text-xs"
+            onClick={handleGenerateTTS}
+            disabled={generating || !selectedVoice?.elevenlabs_voice_id || !ttsText.trim()}
+          >
+            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            {generating ? "Generating..." : "Generate Speech"}
+          </Button>
+          {playing && (
+            <Button variant="outline" size="sm" onClick={() => audioRef.current?.pause()} className="gap-1.5 text-xs">
+              <Pause className="h-3.5 w-3.5" /> Stop
+            </Button>
+          )}
+          {lastBlobUrl && !playing && (
+            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 text-xs">
+              <Download className="h-3.5 w-3.5" /> Export Audio
+            </Button>
+          )}
         </div>
       </div>
 
