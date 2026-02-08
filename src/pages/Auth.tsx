@@ -178,17 +178,6 @@ export default function Auth() {
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {mode === "forgot" ? "Send Reset Link" : mode === "login" ? "Log In" : "Create Account"}
             </Button>
-            {mode === "login" && (
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => navigate("/forgot-password")}
-                  className="text-xs text-primary hover:underline font-medium"
-                >
-                  Forgot your password?
-                </button>
-              </div>
-            )}
           </form>
         </div>
 
