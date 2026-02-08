@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable/index";
+const oauthAvailable = lovable.isOAuthAvailable;
 
 export default function Auth() {
   const { user, loading } = useAuth();
@@ -62,14 +63,23 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!oauthAvailable) {
+      toast({
+        title: "Google Sign-In unavailable",
+        description: "Supabase is not configured. Please use email and password instead.",
+        variant: "destructive",
+      });
+      return;
+    }
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
-      if (error) {
-        toast({ title: "Google Sign-In Failed", description: error.message, variant: "destructive" });
+      if (result?.error) {
+        toast({ title: "Google Sign-In Failed", description: result.error.message, variant: "destructive" });
       }
+      // If successful, Supabase redirects to Google — no toast needed
     } catch (err: any) {
       toast({ title: "Error", description: err?.message ?? "Could not initiate Google Sign-In.", variant: "destructive" });
     } finally {
@@ -120,12 +130,13 @@ export default function Auth() {
             </button>
           </div>
 
-          {/* Google OAuth (optional; requires Supabase env vars) */}
+          {/* Google OAuth (optional; requires Supabase env vars + Google provider enabled) */}
           <Button
             variant="outline"
             className="w-full gap-2"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
+            title={!oauthAvailable ? "Supabase not configured for Google Sign-In" : undefined}
           >
             {googleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
