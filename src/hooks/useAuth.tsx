@@ -1,5 +1,18 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { supabase as supabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+
+// Fallback: if env vars didn't resolve, create client with known Cloud values
+function getSupabase() {
+  if (supabaseClient) return supabaseClient;
+  const url = import.meta.env.VITE_SUPABASE_URL || "https://cyeiioxtwnxhpvhndfke.supabase.co";
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5ZWlpb3h0d254aHB2aG5kZmtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MjE1MjksImV4cCI6MjA4NjA5NzUyOX0.wBcYAWxdE8MTBepuz7xOMTQVds7OiJlYVxyT1q3ScjY";
+  return createClient(url, key, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
+}
+
+const supabase = getSupabase();
 
 
 interface User {
@@ -34,8 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     const initAuth = async () => {
-      // 1. Check Supabase session (handles Google OAuth redirects too)
-      if (isSupabaseConfigured && supabase) {
+      // 1. Check existing session
+      {
         try {
           const {
             data: { session },
@@ -66,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for Supabase auth changes (e.g. OAuth redirect callback)
     let subscription: { unsubscribe: () => void } | undefined;
-    if (isSupabaseConfigured && supabase) {
+    {
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
           setUser({
@@ -161,9 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Sign Out ──
   const signOut = async () => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
-    }
+    await supabase.auth.signOut();
     setUser(null);
   };
 
